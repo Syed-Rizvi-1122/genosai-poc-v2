@@ -1,0 +1,19 @@
+{
+  "transaction_ref": "TXN-UC8-002",
+  "sending_institution": "Genos Bank",
+  "receiving_institution": "HBL Bank",
+  "transfer_type": "INDIVIDUAL",
+  "direction": "OUTGOING",
+  "originator_customer_id": 201,
+  "amount": 75000.00,
+  "currency": "PKR",
+  "value_date": "2026-07-17",
+  "purpose_of_transfer": "School Fees",
+  "originator_beneficiary_relationship": "Parent-Child",
+  "originator_name": "Test Outgoing Compliant Customer",
+  "originator_account_ref": "AC-201-999",
+  "originator_id_doc_number": "",
+  "beneficiary_name": "Beaconhouse School System",
+  "beneficiary_account_ref": "AC-111-222",
+  "beneficiary_id_doc_number": "N/A"
+}

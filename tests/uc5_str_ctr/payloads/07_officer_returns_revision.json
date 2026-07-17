@@ -1,0 +1,24 @@
+{
+  "scenario": "STR Scenario 7: Compliance officer returns case for revision",
+  "customer_id": 107,
+  "trigger": {
+    "path": "uc5-str-manual-obs",
+    "body": {
+      "source_reference": "OBS-STAFF-17",
+      "description": "Large cash transaction structuring check"
+    }
+  },
+  "analyst_decide": {
+    "analyst_name": "Analyst Ahmed",
+    "analyst_role": "COMPLIANCE_ANALYST",
+    "action": "decide",
+    "decision": "FILE_STR",
+    "rationale": "High volume of deposits with no clear origin."
+  },
+  "officer_signoff": {
+    "officer_name": "Director Compliance",
+    "officer_role": "COMPLIANCE_OFFICER",
+    "decision": "RETURNED_FOR_REVISION",
+    "comments": "Please review the source of wealth files again. Findings are too thin."
+  }
+}

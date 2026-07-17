@@ -1,0 +1,26 @@
+{
+  "intake": {
+    "transaction_ref": "TXN-UC8-004",
+    "sending_institution": "Offshore Bank Corp",
+    "receiving_institution": "Genos Bank",
+    "transfer_type": "INDIVIDUAL",
+    "direction": "INCOMING",
+    "originator_customer_id": 203,
+    "amount": 2500000.00,
+    "currency": "PKR",
+    "value_date": "2026-07-17",
+    "purpose_of_transfer": "Consulting Fees",
+    "originator_beneficiary_relationship": "Advisory services",
+    "originator_name": "",
+    "originator_account_ref": "AC-SECRET-007",
+    "originator_id_doc_number": "N/A",
+    "beneficiary_name": "Test Beneficiary Compliant Customer",
+    "beneficiary_account_ref": "AC-203-888",
+    "beneficiary_id_doc_number": "42101-1234567-3"
+  },
+  "analyst_action": {
+    "action": "SUSPENDED_STR_ESCALATION",
+    "reviewer_name": "Analyst Ahmed",
+    "rationale": "High value incoming transfer from offshore jurisdiction with anonymous originator name. Potential shell company activity. Escalating to STR."
+  }
+}

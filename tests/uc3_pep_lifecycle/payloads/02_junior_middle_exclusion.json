@@ -1,0 +1,27 @@
+{
+  "scenario": "Scenario 2: Junior/Middle-Ranking Exclusion Gate (Blocked at Phase 5)",
+  "customer": {
+    "case_ref": "UC3-TEST-CASE-02",
+    "customer_type_code": "INDIVIDUAL",
+    "full_name": "Rashid Mehmood Langrial",
+    "date_of_birth": "1985-04-12",
+    "role": "PRIMARY"
+  },
+  "flow_a": {
+    "trigger_reason": "PROFILE_UPDATE"
+  },
+  "flow_b": {
+    "review_decision": "CONFIRMED_MATCH",
+    "reviewer_name": "Analyst Ahmed",
+    "reviewer_notes": "Name matches Assistant Director in Provincial Revenue Dept.",
+    "classification_type": "DIRECT_PEP",
+    "test_joint_beneficial_ownership": false,
+    "test_entity_set_up_for_pep_benefit": false,
+    "test_reasonably_known_close_connection": false,
+    "test_is_spouse": false,
+    "test_is_lineal_descendant_ascendant": false,
+    "test_is_sibling": false,
+    "role_verified": "Assistant Director, Provincial Revenue Department",
+    "is_senior_enough": false
+  }
+}

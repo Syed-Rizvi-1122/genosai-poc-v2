@@ -1,0 +1,15 @@
+{
+  "scenario": "STR Scenario 5: Access control check blocks non-compliance role (Tipping-off prevention)",
+  "customer_id": 105,
+  "trigger": {
+    "path": "uc5-str-manual-obs",
+    "body": {
+      "source_reference": "OBS-STAFF-15",
+      "description": "Unusual counter transactions"
+    }
+  },
+  "access_check": {
+    "requester_name": "Relationship Manager Amir",
+    "requester_role": "RELATIONSHIP_MANAGER"
+  }
+}

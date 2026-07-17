@@ -1,0 +1,1691 @@
+{
+  "name": "UC8 - Wire Transfer Data Completeness",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "uc8-wire-intake",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        192
+      ],
+      "id": "76630b35-d0fd-492d-a329-44fe26755cb4",
+      "name": "Webhook — Wire Transfer Intake",
+      "webhookId": "ae4404db-d1c5-4613-8000-9a53878cc7a5"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO wire_transfers (\n  transaction_ref, sending_institution, receiving_institution, \n  transfer_type, direction, originator_customer_id, amount, currency, \n  value_date, purpose_of_transfer, originator_beneficiary_relationship,\n  originator_name, originator_account_ref, originator_id_doc_number,\n  beneficiary_name, beneficiary_account_ref, beneficiary_id_doc_number,\n  transfer_status\n) VALUES (\n  '{{ $json.body.transaction_ref }}',\n  '{{ $json.body.sending_institution }}',\n  '{{ $json.body.receiving_institution }}',\n  '{{ $json.body.transfer_type }}',\n  '{{ $json.body.direction }}',\n  {{ $json.body.originator_customer_id ? $json.body.originator_customer_id : 'NULL' }},\n  {{ $json.body.amount }},\n  '{{ $json.body.currency }}',\n  '{{ $json.body.value_date }}',\n  '{{ $json.body.purpose_of_transfer }}',\n  '{{ $json.body.originator_beneficiary_relationship }}',\n  '{{ $json.body.originator_name }}',\n  '{{ $json.body.originator_account_ref }}',\n  '{{ $json.body.originator_id_doc_number }}',\n  '{{ $json.body.beneficiary_name }}',\n  '{{ $json.body.beneficiary_account_ref }}',\n  '{{ $json.body.beneficiary_id_doc_number }}',\n  'PENDING_CHECK'\n) RETURNING *;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        224,
+        192
+      ],
+      "id": "2354cf4b-5265-4475-8807-2100770e77b2",
+      "name": "Insert Raw Transfer",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "9438d3f7-7ffc-4bdd-9bf0-6083a8bb74df",
+              "leftValue": "={{ $json.sending_institution }}",
+              "rightValue": "SBP_MEMBER_BANK_A",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "07625b47-36a6-43a8-99aa-ade7c1facc97",
+              "leftValue": "={{ $('Webhook — Wire Transfer Intake').first().json.body.is_own_behalf }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        448,
+        192
+      ],
+      "id": "07af772e-0038-40a4-9ec5-9b68e6ef7caf",
+      "name": "IF: Interbank Exemption?"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE wire_transfers\nSET transfer_status = 'EXECUTED',\n    is_interbank_exemption = TRUE,\n    retention_until = now()::date + interval '10 years'\nWHERE id = {{ $json.id }}\nRETURNING *;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        672,
+        -96
+      ],
+      "id": "66ab31b5-c935-426a-9261-24ec492aae73",
+      "name": "Postgres — Set Exempt",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"EXEMPT\", \"transaction_ref\": $json.transaction_ref, \"message\": \"Interbank settlement positions are exempt under Reg 11 §1.\" } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        896,
+        -96
+      ],
+      "id": "0ab866c9-5483-42eb-94f0-5b48a3001b26",
+      "name": "Respond: Interbank Exempt"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.direction }}",
+                    "rightValue": "OUTGOING",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "3788d0ee-1b89-4156-a3b5-244a2a1d7a19"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "0"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "c31d574a-cbca-4217-ab0f-551fe36a4a24",
+                    "leftValue": "={{ $json.direction }}",
+                    "rightValue": "FORWARDING",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "1"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "e46469b3-9163-44e5-9e90-ef66a415ffa3",
+                    "leftValue": "={{ $json.direction }}",
+                    "rightValue": "INCOMING",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "2"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        672,
+        464
+      ],
+      "id": "fed5d8a7-d418-4064-8623-8315493493cc",
+      "name": "Switch: Role Router"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT status FROM cdd_cases WHERE id = (SELECT case_id FROM customers WHERE id = {{ $json.originator_customer_id }});",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        896,
+        112
+      ],
+      "id": "a876f154-04fa-481b-b9cf-b3a1b7e505eb",
+      "name": "Lookup Originator CDD",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "5aacfaa3-dbf4-41f0-a592-d63d96d4da03",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "APPROVED",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1120,
+        112
+      ],
+      "id": "2e1e2fde-2627-425d-bb91-20d651f35759",
+      "name": "IF: CDD Approved?"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE wire_transfers\nSET transfer_status = 'REJECTED',\n    flagged_for_cdd_failure = TRUE\nWHERE id = {{ $('Insert Raw Transfer').first().json.id }}\nRETURNING *;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1344,
+        208
+      ],
+      "id": "b1d40da2-1412-48c7-a4d0-fe5104eda035",
+      "name": "Block CDD Failure",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"REJECTED\", \"error\": \"CDD_INCOMPLETE\", \"message\": \"Originator CDD is incomplete. Outgoing wire transfer blocked per Reg 11 §2a.\" } }}\n",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1568,
+        208
+      ],
+      "id": "5f002bba-b99b-4782-813e-bfcaa7c3620d",
+      "name": "Respond: Block CDD Failure"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const wt = $('Insert Raw Transfer').first().json;\nlet isComplete = true;\nlet missing = [];\n\nif (wt.transfer_type === 'BATCH') {\n  if (!wt.originator_account_ref) { isComplete = false; missing.push('originator_account_ref'); }\n  if (!wt.beneficiary_name) { isComplete = false; missing.push('beneficiary_name'); }\n  if (!wt.beneficiary_account_ref) { isComplete = false; missing.push('beneficiary_account_ref'); }\n} else {\n  if (!wt.originator_name) { isComplete = false; missing.push('originator_name'); }\n  if (!wt.originator_account_ref) { isComplete = false; missing.push('originator_account_ref'); }\n  if (!wt.originator_id_doc_number) { isComplete = false; missing.push('originator_id_doc_number'); }\n  if (!wt.beneficiary_name) { isComplete = false; missing.push('beneficiary_name'); }\n  if (!wt.beneficiary_account_ref) { isComplete = false; missing.push('beneficiary_account_ref'); }\n}\nreturn { is_complete: isComplete, missing_fields: missing };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1344,
+        16
+      ],
+      "id": "0e75fe59-068b-4706-9165-936b43ea54df",
+      "name": "Verify Outgoing Fields"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "89b964b5-5866-44d8-a637-ce65549ebf28",
+              "leftValue": "={{ $json.is_complete }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1568,
+        16
+      ],
+      "id": "057b255c-d543-40cc-a27d-275a9385e3df",
+      "name": "IF: Outgoing Fields Complete?"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE wire_transfers\nSET transfer_status = 'REJECTED'\nWHERE id = {{ $('Insert Raw Transfer').first().json.id }}\nRETURNING *;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1792,
+        192
+      ],
+      "id": "81fce594-c46c-414a-858f-4df928f51f73",
+      "name": "Reject Outgoing",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"REJECTED\", \"error\": \"MISSING_REQUIRED_FIELDS\", \"message\": \"Outgoing transfer failed completeness checks per SBP Reg 11 §3/§4.\", \"missing_fields\": $('Verify Outgoing Fields').first().json.missing_fields } }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2016,
+        192
+      ],
+      "id": "948c9931-b958-40ed-971c-5b9549ea46b7",
+      "name": "Respond: Outgoing Rejected"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE wire_transfers\nSET transfer_status = 'SENT',\n    retention_until = now()::date + interval '10 years'\nWHERE id = {{ $('Insert Raw Transfer').first().json.id }}\nRETURNING *;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1792,
+        -96
+      ],
+      "id": "f06b2522-e8d0-409e-86c5-bdb4fd54ae27",
+      "name": "Send Outgoing",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"SENT\", \"transaction_ref\": $json.transaction_ref, \"message\": \"Outgoing wire transfer validated and sent.\" } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2016,
+        -96
+      ],
+      "id": "8fd6a338-c911-49b5-99bf-54071b3e3a1a",
+      "name": "Respond: Outgoing Sent"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const wt = $('Insert Raw Transfer').first().json;\nlet isComplete = true;\nlet missing = [];\n\nif (!wt.originator_name) { isComplete = false; missing.push('originator_name'); }\nif (!wt.originator_account_ref) { isComplete = false; missing.push('originator_account_ref'); }\nif (!wt.originator_id_doc_number) { isComplete = false; missing.push('originator_id_doc_number'); }\nif (!wt.beneficiary_name) { isComplete = false; missing.push('beneficiary_name'); }\nif (!wt.beneficiary_account_ref) { isComplete = false; missing.push('beneficiary_account_ref'); }\nreturn { is_complete: isComplete, missing_fields: missing };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        496
+      ],
+      "id": "fb1516eb-bcd5-4037-a177-1235134932e1",
+      "name": "Verify Forwarding Fields"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "eed04ba7-265d-41c6-85f2-f137f869c539",
+              "leftValue": "={{ $json.is_complete }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1120,
+        496
+      ],
+      "id": "b168fcd7-1795-4f12-ab41-c28e8e738a00",
+      "name": "IF: Forwarding Complete?"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE wire_transfers\nSET transfer_status = 'EXECUTED',\n    retention_until = now()::date + interval '10 years'\nWHERE id = {{ $('Insert Raw Transfer').first().json.id }}\nRETURNING *;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1344,
+        400
+      ],
+      "id": "f5f04079-8c1f-4bc7-af38-3e04b5a926d9",
+      "name": "Forward Complete",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"FORWARDED\", \"transaction_ref\": $json.transaction_ref, \"message\": \"Intermediary transfer forwarded with preserved data.\" } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1568,
+        400
+      ],
+      "id": "4b2b1396-f6d7-451e-b90e-653e95d2848d",
+      "name": "Respond: Forward Success"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE wire_transfers\nSET transfer_status = 'HELD_COMPLETENESS'\nWHERE id = {{ $('Insert Raw Transfer').first().json.id }}\nRETURNING *;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1344,
+        592
+      ],
+      "id": "44b2be46-9d60-4498-8deb-af777b5e32cf",
+      "name": "Set Forward Hold",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO wire_transfer_holds (wire_transfer_id, role_at_bank, hold_reason, review_status)\nVALUES (\n  {{ $('Insert Raw Transfer').first().json.id }},\n  'INTERMEDIARY',\n  'Missing fields: {{ $('Verify Forwarding Fields').first().json.missing_fields.join(\", \") }}',\n  'PENDING_REVIEW'\n) RETURNING *;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1568,
+        592
+      ],
+      "id": "67b37adb-383b-402b-98cf-61305f41e5b5",
+      "name": "Insert Hold Record",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO correspondent_completeness_logs (institution_name, wire_transfer_id, missing_fields_count)\nVALUES (\n  '{{ $('Insert Raw Transfer').first().json.sending_institution }}',\n  {{ $('Insert Raw Transfer').first().json.id }},\n  {{ $('Verify Forwarding Fields').first().json.missing_fields.length }}\n);",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1792,
+        592
+      ],
+      "id": "65722bea-160a-476c-8421-fed8133e047d",
+      "name": "Log Correspondent Incompleteness",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "shazanali3210@gmail.com",
+        "toEmail": "shazanali3210@gmail.com",
+        "subject": "ALERT: Intermediary Wire Transfer Held for Data Completeness",
+        "html": "=<html>\n<head>\n  <style>\n    body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #333; background: #f4f6f9; margin: 0; padding: 40px; }\n    .card { background: #fff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); max-width: 600px; margin: 0 auto; overflow: hidden; border: 1px solid #e1e4e8; }\n    .header { background: linear-gradient(135deg, #e67e22 0%, #d35400 100%); color: #fff; padding: 30px; text-align: center; }\n    .header h1 { margin: 0; font-size: 20px; font-weight: 600; color: #ffffff; }\n    .header p { margin: 5px 0 0; opacity: 0.8; font-size: 13px; color: #ffffff; }\n    .content { padding: 30px; }\n    .badge { display: inline-block; padding: 6px 12px; font-size: 12px; font-weight: 700; border-radius: 20px; text-transform: uppercase; margin-bottom: 20px; background: #fff3cd; color: #856404; }\n    .section-title { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #718096; border-bottom: 1px solid #edf2f7; padding-bottom: 8px; margin-top: 25px; margin-bottom: 15px; }\n    table { width: 100%; border-collapse: collapse; }\n    td { padding: 8px 0; font-size: 14px; }\n    td:first-child { color: #718096; width: 40%; }\n    td:last-child { font-weight: 600; }\n    .footer { background: #f8f9fa; padding: 20px 30px; text-align: center; font-size: 12px; color: #718096; }\n  </style>\n</head>\n<body>\n  <div class=\"card\">\n    <div class=\"header\">\n      <h1>⚠️ Intermediary Transfer Held</h1>\n      <p>UC8 — Wire Transfer Data Completeness & Compliance</p>\n    </div>\n    <div class=\"content\">\n      <span class=\"badge\">HOLD REASON: INCOMPLETE DATA</span>\n      <div class=\"section-title\">Transfer Details</div>\n      <table>\n        <tr><td>Transaction Ref</td><td>{{ $('Insert Raw Transfer').first().json.transaction_ref }}</td></tr>\n        <tr><td>Direction</td><td>{{ $('Insert Raw Transfer').first().json.direction }}</td></tr>\n        <tr><td>Amount</td><td>{{ $('Insert Raw Transfer').first().json.amount }} {{ $('Insert Raw Transfer').first().json.currency }}</td></tr>\n        <tr><td>Sending Bank</td><td>{{ $('Insert Raw Transfer').first().json.sending_institution }}</td></tr>\n        <tr><td>Receiving Bank</td><td>{{ $('Insert Raw Transfer').first().json.receiving_institution }}</td></tr>\n      </table>\n      <div class=\"section-title\">Regulatory Hold Status</div>\n      <table>\n        <tr><td>Hold ID</td><td>{{ $('Insert Hold Record').first().json.id }}</td></tr>\n        <tr><td>Hold Reason</td><td style=\"color: #c0392b;\">{{ $('Insert Hold Record').first().json.hold_reason }}</td></tr>\n      </table>\n      <div class=\"section-title\">Next Step</div>\n      <p style=\"font-size:14px; margin: 0; line-height: 1.5;\">This transaction has been placed in the compliance hold queue. The correspondent bank logs have been updated. Action must be taken via the Analyst Hold Action Gate to approve release, reject, or escalate.</p>\n    </div>\n    <div class=\"footer\">\n      Genos Bank Compliance Automation • SBP Regulation 11 Compliance\n    </div>\n  </div>\n</body>\n</html>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        2016,
+        592
+      ],
+      "id": "e13e80ea-37f2-42db-be0c-edc815c31e22",
+      "name": "Send Email: Hold Alert",
+      "webhookId": "fd7bbb12-454e-4f64-a46e-bb09768c9441",
+      "credentials": {
+        "smtp": {
+          "id": "8Rb60oaV0VVNTtzH",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"HELD_COMPLETENESS\", \"hold_id\": $('Insert Hold Record').first().json.id, \"message\": \"Forwarding transfer placed on hold for data completeness check.\" } }}",
+        "options": {
+          "responseCode": 202
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2240,
+        592
+      ],
+      "id": "0132a1dc-71a8-4e22-8a6c-f9c6d2e56dc2",
+      "name": "Respond: Forwarding Hold"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT status FROM cdd_cases WHERE id = (SELECT case_id FROM customers WHERE id = {{ $json.originator_customer_id }});",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        896,
+        896
+      ],
+      "id": "3903b6dc-51d8-40f4-98ae-2d55d43852af",
+      "name": "Lookup Beneficiary CDD",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "b79a5e5f-cb66-45ab-bc70-e38b328ff36d",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "APPROVED",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1120,
+        896
+      ],
+      "id": "a5ab782f-8c79-450d-894c-f05603a91971",
+      "name": "IF: Beneficiary CDD Approved?"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "7b1f350b-f112-4af0-821d-cb5008c40e3e",
+              "leftValue": "={{ $json.is_complete }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1568,
+        832
+      ],
+      "id": "6280f18f-0195-41e6-80ed-2563a71d7e44",
+      "name": "IF: Incoming Fields Complete?"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE wire_transfers\nSET transfer_status = 'EXECUTED',\n    retention_until = now()::date + interval '10 years'\nWHERE id = {{ $('Insert Raw Transfer').first().json.id }}\nRETURNING *;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1792,
+        784
+      ],
+      "id": "36be6da6-9f97-4852-a86d-39add193a91d",
+      "name": "Beneficiary Complete",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"CREDITED\", \"transaction_ref\": $json.transaction_ref, \"message\": \"Incoming transfer credited to beneficiary account.\" } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2016,
+        784
+      ],
+      "id": "697d080a-0c86-4148-9d73-40a97c2d2fb6",
+      "name": "Respond: Beneficiary Complete"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE wire_transfers\nSET transfer_status = 'HELD_COMPLETENESS'\nWHERE id = {{ $('Insert Raw Transfer').first().json.id }}\nRETURNING *;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1792,
+        992
+      ],
+      "id": "097c0452-7f4a-485c-accf-ac20c48735d4",
+      "name": "Set Beneficiary Hold",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO wire_transfer_holds (wire_transfer_id, role_at_bank, hold_reason, review_status)\nVALUES (\n  {{ $('Insert Raw Transfer').first().json.id }},\n  'BENEFICIARY',\n  CASE \n    WHEN '{{ $('Lookup Beneficiary CDD').first().json.status }}' != 'APPROVED' THEN 'Beneficiary CDD incomplete'\n    ELSE 'Missing fields: {{ $('Verify Incoming Fields').first().json.missing_fields.join(\", \") }}'\n  END,\n  'PENDING_REVIEW'\n) RETURNING *;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2016,
+        992
+      ],
+      "id": "4f41cd44-e573-4b17-9f40-4b7994083c9e",
+      "name": "Insert Hold Record (Beneficiary)",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const wt = $('Insert Raw Transfer').first().json;\nlet isComplete = true;\nlet missing = [];\n\nif (!wt.originator_name) { isComplete = false; missing.push('originator_name'); }\nif (!wt.originator_account_ref) { isComplete = false; missing.push('originator_account_ref'); }\nif (!wt.originator_id_doc_number) { isComplete = false; missing.push('originator_id_doc_number'); }\nreturn { is_complete: isComplete, missing_fields: missing };"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1344,
+        832
+      ],
+      "id": "0739c1d0-93c6-4b22-b302-330394ff34e6",
+      "name": "Verify Incoming Fields"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO correspondent_completeness_logs (institution_name, wire_transfer_id, missing_fields_count)\nVALUES (\n  '{{ $('Insert Raw Transfer').first().json.sending_institution }}',\n  {{ $('Insert Raw Transfer').first().json.id }},\n  {{ $('Verify Incoming Fields').first().json.is_complete ? 0 : $('Verify Incoming Fields').first().json.missing_fields.length }}\n);",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2240,
+        992
+      ],
+      "id": "ca58a3b4-0cfc-4285-b9d7-62646d9a604c",
+      "name": "Log Correspondent (Beneficiary)",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "shazanali3210@gmail.com<p>An incoming wire transfer has been placed on hold due to missing mandatory regulatory fields or incomplete beneficiary CDD status.</p> <p><strong>Transaction Ref:</strong> {{ $('Insert Raw Transfer').first().json.transaction_ref }}</p> <p><strong>Hold Reason:</strong> {{ $('Insert Hold Record (Beneficiary)').first().json.hold_reason }}</p>",
+        "toEmail": "shazanali3210@gmail.com",
+        "subject": "ALERT: Beneficiary Wire Transfer Held for Data Completeness",
+        "html": "=<html>\n<head>\n  <style>\n    body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #333; background: #f4f6f9; margin: 0; padding: 40px; }\n    .card { background: #fff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); max-width: 600px; margin: 0 auto; overflow: hidden; border: 1px solid #e1e4e8; }\n    .header { background: linear-gradient(135deg, #e67e22 0%, #d35400 100%); color: #fff; padding: 30px; text-align: center; }\n    .header h1 { margin: 0; font-size: 20px; font-weight: 600; color: #ffffff; }\n    .header p { margin: 5px 0 0; opacity: 0.8; font-size: 13px; color: #ffffff; }\n    .content { padding: 30px; }\n    .badge { display: inline-block; padding: 6px 12px; font-size: 12px; font-weight: 700; border-radius: 20px; text-transform: uppercase; margin-bottom: 20px; background: #fff3cd; color: #856404; }\n    .section-title { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #718096; border-bottom: 1px solid #edf2f7; padding-bottom: 8px; margin-top: 25px; margin-bottom: 15px; }\n    table { width: 100%; border-collapse: collapse; }\n    td { padding: 8px 0; font-size: 14px; }\n    td:first-child { color: #718096; width: 40%; }\n    td:last-child { font-weight: 600; }\n    .footer { background: #f8f9fa; padding: 20px 30px; text-align: center; font-size: 12px; color: #718096; }\n  </style>\n</head>\n<body>\n  <div class=\"card\">\n    <div class=\"header\">\n      <h1>⚠️ Beneficiary Transfer Held</h1>\n      <p>UC8 — Wire Transfer Data Completeness & Compliance</p>\n    </div>\n    <div class=\"content\">\n      <span class=\"badge\">HOLD REASON: KYC OR DATA INCOMPLETE</span>\n      <div class=\"section-title\">Transfer Details</div>\n      <table>\n        <tr><td>Transaction Ref</td><td>{{ $('Insert Raw Transfer').first().json.transaction_ref }}</td></tr>\n        <tr><td>Direction</td><td>{{ $('Insert Raw Transfer').first().json.direction }}</td></tr>\n        <tr><td>Amount</td><td>{{ $('Insert Raw Transfer').first().json.amount }} {{ $('Insert Raw Transfer').first().json.currency }}</td></tr>\n        <tr><td>Sending Bank</td><td>{{ $('Insert Raw Transfer').first().json.sending_institution }}</td></tr>\n        <tr><td>Receiving Bank</td><td>{{ $('Insert Raw Transfer').first().json.receiving_institution }}</td></tr>\n      </table>\n      <div class=\"section-title\">Regulatory Hold Status</div>\n      <table>\n        <tr><td>Hold ID</td><td>{{ $('Insert Hold Record (Beneficiary)').first().json.id }}</td></tr>\n        <tr><td>Hold Reason</td><td style=\"color: #c0392b;\">{{ $('Insert Hold Record (Beneficiary)').first().json.hold_reason }}</td></tr>\n      </table>\n      <div class=\"section-title\">Next Step</div>\n      <p style=\"font-size:14px; margin: 0; line-height: 1.5;\">This transaction has been placed in the compliance hold queue. The beneficiary's KYC status or incoming transaction details failed compliance checks. Action must be taken via the Analyst Hold Action Gate.</p>\n    </div>\n    <div class=\"footer\">\n      Genos Bank Compliance Automation • SBP Regulation 11 Compliance\n    </div>\n  </div>\n</body>\n</html>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        2464,
+        992
+      ],
+      "id": "890c5adc-e36e-4c84-98de-70d2a5b32d77",
+      "name": "Send Email: Hold Alert (Beneficiary)",
+      "webhookId": "e1b839da-e9bc-4323-b087-09d149432553",
+      "credentials": {
+        "smtp": {
+          "id": "8Rb60oaV0VVNTtzH",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"HELD_COMPLETENESS\", \"hold_id\": $('Insert Hold Record (Beneficiary)').first().json.id, \"message\": \"Incoming beneficiary transfer placed on hold.\" } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2688,
+        992
+      ],
+      "id": "5a4a312d-85c0-45be-a63e-467033127713",
+      "name": "Respond: Beneficiary Hold"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "uc8-analyst-action",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        1408
+      ],
+      "id": "b34d1b77-7878-4ced-b1be-585a62051f19",
+      "name": "Webhook: Analyst Hold Action",
+      "webhookId": "94adebbe-0eb4-4e04-8751-8706f612782e"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT h.*, w.transaction_ref, w.direction, w.originator_customer_id \nFROM wire_transfer_holds h \nJOIN wire_transfers w ON h.wire_transfer_id = w.id \nWHERE h.id = {{ $json.body.hold_id }};",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        224,
+        1408
+      ],
+      "id": "a3396d6b-7cc9-4bf6-8960-f413d5ee91b0",
+      "name": "Lookup Hold Details",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Webhook: Analyst Hold Action').first().json.body.action }}",
+                    "rightValue": "APPROVED_RELEASE",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "004f166f-db1c-4f09-b45b-17f626f909f2"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "0"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "0c3e6701-3dbb-422b-b4d3-ab06fe73010a",
+                    "leftValue": "={{ $('Webhook: Analyst Hold Action').first().json.body.action }}",
+                    "rightValue": "APPROVED_REJECT",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "1"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "cb071246-8a75-4a0f-85ba-22b184170c54",
+                    "leftValue": "={{ $('Webhook: Analyst Hold Action').first().json.body.action }}",
+                    "rightValue": "SUSPENDED_STR_ESCALATION",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "2"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        448,
+        1392
+      ],
+      "id": "1a6e4d03-f0b7-4f95-bee6-a0c4e4461f35",
+      "name": "Switch: Analyst Action"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE wire_transfer_holds\nSET review_status = 'APPROVED_RELEASE',\n    reviewed_by = '{{ $('Webhook: Analyst Hold Action').first().json.body.reviewer_name }}',\n    reviewed_at = now(),\n    rationale = '{{ $('Webhook: Analyst Hold Action').first().json.body.rationale }}'\nWHERE id = {{ $json.id }}\nRETURNING *;\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        672,
+        1216
+      ],
+      "id": "924a002b-cc06-4ad4-a2f9-e4904076931b",
+      "name": "Update Hold Release",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE wire_transfers\nSET transfer_status = 'EXECUTED',\n    retention_until = now()::date + interval '10 years'\nWHERE id = {{ $json.wire_transfer_id }}\nRETURNING *;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        896,
+        1216
+      ],
+      "id": "052c3a5e-63b8-40bb-8e5b-fe5d286ef271",
+      "name": "Release Funds",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"APPROVED_RELEASE\", \"transaction_ref\": $('Lookup Hold Details').first().json.transaction_ref, \"message\": \"Wire transfer released and executed.\" } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1120,
+        1216
+      ],
+      "id": "c6593028-e86b-419f-8c01-e9c8626f454b",
+      "name": "Respond: Released"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE wire_transfer_holds\nSET review_status = 'APPROVED_REJECT',\n    reviewed_by = '{{ $('Webhook: Analyst Hold Action').first().json.body.reviewer_name }}',\n    reviewed_at = now(),\n    rationale = '{{ $('Webhook: Analyst Hold Action').first().json.body.rationale }}'\nWHERE id = {{ $json.id }}\nRETURNING *;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        672,
+        1408
+      ],
+      "id": "d46e3b67-a5c2-4796-84fd-4229f1a4a137",
+      "name": "Update Hold Reject",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE wire_transfers\nSET transfer_status = 'REJECTED',\n    retention_until = now()::date + interval '10 years'\nWHERE id = {{ $json.wire_transfer_id }}\nRETURNING *;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        896,
+        1408
+      ],
+      "id": "bf1218b3-4a2e-4876-b663-149d18af616e",
+      "name": "Reject Funds",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"APPROVED_REJECT\", \"transaction_ref\": $('Lookup Hold Details').first().json.transaction_ref, \"message\": \"Wire transfer rejected and funds terminated.\" } }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1120,
+        1408
+      ],
+      "id": "16149004-b9b3-48f0-a21f-d30e35efd027",
+      "name": "Respond: Rejected"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE wire_transfer_holds\nSET review_status = 'SUSPENDED_STR_ESCALATION',\n    reviewed_by = '{{ $('Webhook: Analyst Hold Action').first().json.body.reviewer_name }}',\n    reviewed_at = now(),\n    rationale = '{{ $('Webhook: Analyst Hold Action').first().json.body.rationale }}'\nWHERE id = {{ $json.id }}\nRETURNING *;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        672,
+        1600
+      ],
+      "id": "0b355553-d538-4239-91cd-ce77ceb830d2",
+      "name": "Update Hold Suspend",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE wire_transfers\nSET transfer_status = 'SUSPENDED',\n    flagged_for_str_review = TRUE,\n    retention_until = now()::date + interval '10 years'\nWHERE id = {{ $json.wire_transfer_id }}\nRETURNING *;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        896,
+        1600
+      ],
+      "id": "199ac9a2-2c4f-40b0-bb39-918f67af9db5",
+      "name": "Suspend Funds",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:5678/webhook/uc5-str-cross-uc",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"trigger_type\": \"CROSS_UC_FINDING\",\n  \"source_reference\": \"UC8-HOLD-{{ $('Lookup Hold Details').first().json.id }}\",\n  \"customer_id\": {{ $('Lookup Hold Details').first().json.originator_customer_id ? $('Lookup Hold Details').first().json.originator_customer_id : 103 }},\n  \"details\": {\n    \"wire_transfer_id\": {{ $('Lookup Hold Details').first().json.wire_transfer_id }},\n    \"transaction_ref\": \"{{ $('Lookup Hold Details').first().json.transaction_ref }}\",\n    \"reason\": \"Wire transfer held for data completeness escalated to STR due to suspicious non-compliant counterparty behavior.\",\n    \"hold_rationale\": \"{{ $('Webhook: Analyst Hold Action').first().json.body.rationale }}\"\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1120,
+        1600
+      ],
+      "id": "09af4d52-919f-4f1d-bea4-9531613c5a1c",
+      "name": "HTTP Request: Trigger UC5 STR"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"SUSPENDED_STR_ESCALATION\", \"transaction_ref\": $('Lookup Hold Details').first().json.transaction_ref, \"message\": \"Wire transfer suspended. Incident details forwarded to UC5 STR Queue for mandatory investigation.\" } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1344,
+        1600
+      ],
+      "id": "c346b493-09bf-4fec-9fdd-5a5934d1feb4",
+      "name": "Respond: Suspended"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook — Wire Transfer Intake": {
+      "main": [
+        [
+          {
+            "node": "Insert Raw Transfer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Raw Transfer": {
+      "main": [
+        [
+          {
+            "node": "IF: Interbank Exemption?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Interbank Exemption?": {
+      "main": [
+        [
+          {
+            "node": "Postgres — Set Exempt",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Switch: Role Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres — Set Exempt": {
+      "main": [
+        [
+          {
+            "node": "Respond: Interbank Exempt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch: Role Router": {
+      "main": [
+        [
+          {
+            "node": "Lookup Originator CDD",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Verify Forwarding Fields",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Lookup Beneficiary CDD",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lookup Originator CDD": {
+      "main": [
+        [
+          {
+            "node": "IF: CDD Approved?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: CDD Approved?": {
+      "main": [
+        [
+          {
+            "node": "Verify Outgoing Fields",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Block CDD Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Block CDD Failure": {
+      "main": [
+        [
+          {
+            "node": "Respond: Block CDD Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify Outgoing Fields": {
+      "main": [
+        [
+          {
+            "node": "IF: Outgoing Fields Complete?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Outgoing Fields Complete?": {
+      "main": [
+        [
+          {
+            "node": "Send Outgoing",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reject Outgoing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reject Outgoing": {
+      "main": [
+        [
+          {
+            "node": "Respond: Outgoing Rejected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Outgoing": {
+      "main": [
+        [
+          {
+            "node": "Respond: Outgoing Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify Forwarding Fields": {
+      "main": [
+        [
+          {
+            "node": "IF: Forwarding Complete?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Forwarding Complete?": {
+      "main": [
+        [
+          {
+            "node": "Forward Complete",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set Forward Hold",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Forward Complete": {
+      "main": [
+        [
+          {
+            "node": "Respond: Forward Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Forward Hold": {
+      "main": [
+        [
+          {
+            "node": "Insert Hold Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Hold Record": {
+      "main": [
+        [
+          {
+            "node": "Log Correspondent Incompleteness",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Correspondent Incompleteness": {
+      "main": [
+        [
+          {
+            "node": "Send Email: Hold Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email: Hold Alert": {
+      "main": [
+        [
+          {
+            "node": "Respond: Forwarding Hold",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lookup Beneficiary CDD": {
+      "main": [
+        [
+          {
+            "node": "IF: Beneficiary CDD Approved?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Beneficiary CDD Approved?": {
+      "main": [
+        [
+          {
+            "node": "Verify Incoming Fields",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set Beneficiary Hold",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Incoming Fields Complete?": {
+      "main": [
+        [
+          {
+            "node": "Beneficiary Complete",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set Beneficiary Hold",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Beneficiary Complete": {
+      "main": [
+        [
+          {
+            "node": "Respond: Beneficiary Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Beneficiary Hold": {
+      "main": [
+        [
+          {
+            "node": "Insert Hold Record (Beneficiary)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verify Incoming Fields": {
+      "main": [
+        [
+          {
+            "node": "IF: Incoming Fields Complete?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Hold Record (Beneficiary)": {
+      "main": [
+        [
+          {
+            "node": "Log Correspondent (Beneficiary)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Correspondent (Beneficiary)": {
+      "main": [
+        [
+          {
+            "node": "Send Email: Hold Alert (Beneficiary)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email: Hold Alert (Beneficiary)": {
+      "main": [
+        [
+          {
+            "node": "Respond: Beneficiary Hold",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook: Analyst Hold Action": {
+      "main": [
+        [
+          {
+            "node": "Lookup Hold Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lookup Hold Details": {
+      "main": [
+        [
+          {
+            "node": "Switch: Analyst Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch: Analyst Action": {
+      "main": [
+        [
+          {
+            "node": "Update Hold Release",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update Hold Reject",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update Hold Suspend",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Hold Release": {
+      "main": [
+        [
+          {
+            "node": "Release Funds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Release Funds": {
+      "main": [
+        [
+          {
+            "node": "Respond: Released",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Hold Reject": {
+      "main": [
+        [
+          {
+            "node": "Reject Funds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reject Funds": {
+      "main": [
+        [
+          {
+            "node": "Respond: Rejected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Hold Suspend": {
+      "main": [
+        [
+          {
+            "node": "Suspend Funds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Suspend Funds": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request: Trigger UC5 STR",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request: Trigger UC5 STR": {
+      "main": [
+        [
+          {
+            "node": "Respond: Suspended",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "e354a93f-7520-47ca-b0f2-08928c2d3349",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "eeda824893ce98822b0b4043b43e928e49b7621bae4482aa410a3b9883ce47cf"
+  },
+  "nodeGroups": [],
+  "id": "ZWLldK2lkLAUFAPZ",
+  "tags": []
+}

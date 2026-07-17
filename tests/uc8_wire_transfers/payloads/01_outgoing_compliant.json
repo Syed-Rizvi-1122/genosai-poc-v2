@@ -1,0 +1,19 @@
+{
+  "transaction_ref": "TXN-UC8-001",
+  "sending_institution": "Genos Bank",
+  "receiving_institution": "HBL Bank",
+  "transfer_type": "INDIVIDUAL",
+  "direction": "OUTGOING",
+  "originator_customer_id": 201,
+  "amount": 150000.00,
+  "currency": "PKR",
+  "value_date": "2026-07-17",
+  "purpose_of_transfer": "Family Support",
+  "originator_beneficiary_relationship": "Brothers",
+  "originator_name": "Test Outgoing Compliant Customer",
+  "originator_account_ref": "AC-201-999",
+  "originator_id_doc_number": "42101-1234567-1",
+  "beneficiary_name": "Kamran Khan",
+  "beneficiary_account_ref": "AC-888-222",
+  "beneficiary_id_doc_number": "42101-9876543-1"
+}

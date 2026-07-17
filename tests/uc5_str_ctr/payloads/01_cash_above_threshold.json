@@ -1,0 +1,16 @@
+{
+  "scenario": "CTR Scenario 1: Cash deposit above threshold (Flagged & Filed)",
+  "transaction": {
+    "customer_id": 101,
+    "transaction_type": "CASH_DEPOSIT",
+    "amount": 2500000.00,
+    "currency": "PKR",
+    "branch_code": "BR-001",
+    "channel": "BRANCH_TELLER",
+    "description": "Large cash deposit by company director"
+  },
+  "verify": {
+    "data_accuracy_status": "VERIFIED",
+    "verified_by": "Officer Compliance"
+  }
+}

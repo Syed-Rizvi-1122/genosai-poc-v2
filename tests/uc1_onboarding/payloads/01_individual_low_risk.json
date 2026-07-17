@@ -1,0 +1,35 @@
+{
+  "customer_type_code": "INDIVIDUAL",
+  "is_occasional_customer": false,
+  "applicant": {
+    "full_name": "Ayesha Mahmood Khan",
+    "mother_maiden_name": "Rukhsana Begum",
+    "father_spouse_name": "Mahmood Khan",
+    "date_of_birth": "1992-05-14",
+    "place_of_birth": "Lahore",
+    "permanent_address": "House 45, Street 12, DHA Phase 5, Lahore",
+    "current_mailing_address": "House 45, Street 12, DHA Phase 5, Lahore",
+    "identity_doc_type": "CNIC",
+    "identity_doc_number": "3520298765432",
+    "identity_doc_issue_date": "2020-01-15",
+    "identity_doc_expiry_date": "2030-01-14",
+    "contact_mobile": "+923001234567",
+    "contact_landline": "",
+    "email": "ayesha.khan@example.com",
+    "nationality_status": "RESIDENT",
+    "profession_source_of_income": "Software Engineer — Salaried",
+    "purpose_of_relationship": "Salary Account",
+    "next_of_kin": "Mahmood Khan (Father)",
+    "fatca_crs_declared": true
+  },
+  "documents": [
+    {
+      "document_type": "IDENTITY_DOCUMENT",
+      "applies_to_role": "CUSTOMER",
+      "file_ref": "/docs/cnic_ayesha.pdf",
+      "is_attested": false,
+      "attested_by": null,
+      "verification_source": "NADRA_VERISYS"
+    }
+  ]
+}

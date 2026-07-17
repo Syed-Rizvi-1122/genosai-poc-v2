@@ -1,0 +1,25 @@
+{
+  "intake": {
+    "transaction_ref": "TXN-UC8-003",
+    "sending_institution": "Standard Chartered UK",
+    "receiving_institution": "Faysal Bank",
+    "transfer_type": "INDIVIDUAL",
+    "direction": "FORWARDING",
+    "amount": 5000.00,
+    "currency": "USD",
+    "value_date": "2026-07-17",
+    "purpose_of_transfer": "Trade payment for machinery parts",
+    "originator_beneficiary_relationship": "Supplier",
+    "originator_name": "Global Traders Ltd",
+    "originator_account_ref": "AC-GLOBAL-101",
+    "originator_id_doc_number": "",
+    "beneficiary_name": "Pak Industries Lahore",
+    "beneficiary_account_ref": "AC-PAK-909",
+    "beneficiary_id_doc_number": "11122-33344"
+  },
+  "analyst_action": {
+    "action": "APPROVED_RELEASE",
+    "reviewer_name": "Analyst Ahmed",
+    "rationale": "Transaction is standard trade settlement between verified corporate counterparties. Hold released."
+  }
+}

@@ -1,0 +1,1892 @@
+{
+  "name": "UC3 - PEP Lifecycle Monitoring",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "months",
+              "triggerAtHour": 2
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        128
+      ],
+      "id": "c2a5c48d-2f28-446a-8139-3d858e7fbe11",
+      "name": "Schedule Trigger (Monthly)",
+      "retryOnFail": false
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b699c223-fe0b-4b87-b787-3afd7c06ff40",
+              "name": "cycle_type",
+              "value": "SCHEDULED",
+              "type": "string"
+            },
+            {
+              "id": "56185f60-e63a-47c1-8102-d796508ea2b0",
+              "name": "trigger_reason",
+              "value": "MONTHLY_BATCH",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        128
+      ],
+      "id": "30c05706-0e23-49fc-9c86-13dd37dca285",
+      "name": "Set Cycle Type — Scheduled"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "uc3-rescreen-event",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        320
+      ],
+      "id": "e33547ae-c06a-4137-9d6a-b22559296f09",
+      "name": "Webhook Trigger — Event Rescreen",
+      "webhookId": "bf4951d0-7e36-4b1d-a354-2fe5444a84b1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e06d350a-32df-47af-a168-bcd5d3e1e13c",
+              "name": "cycle_type",
+              "value": "EVENT_TRIGGERED",
+              "type": "string"
+            },
+            {
+              "id": "90b56db3-4648-4841-bf8a-6629a716fecd",
+              "name": "trigger_reason",
+              "value": "={{ $json.body.trigger_reason }}",
+              "type": "string"
+            },
+            {
+              "id": "b30613eb-795f-4d1c-9005-5257a404f38d",
+              "name": "customer_id",
+              "value": "={{ $json.body.customer_id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        320
+      ],
+      "id": "387e3797-8b9e-458d-ad6f-a14aaf9daa6c",
+      "name": "Set Cycle Type — Event"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        448,
+        224
+      ],
+      "id": "c851aab2-ab1b-471f-b57c-856217e19dbd",
+      "name": "Merge Triggers"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO rescreening_cycles (cycle_type, trigger_reason, status)\nVALUES ('{{ $json.cycle_type }}', '{{ $json.trigger_reason }}', 'RUNNING')\nRETURNING id, cycle_type, trigger_reason, triggered_at;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        672,
+        224
+      ],
+      "id": "7ec4d0f4-e24f-4bf3-b33f-6250ce38e77d",
+      "name": "Create Rescreening Cycle",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  c.id AS customer_id,\n  c.full_name,\n  c.date_of_birth,\n  c.role AS person_role,\n  cc.case_ref,\n  cc.status AS case_status\nFROM customers c\nJOIN cdd_cases cc ON c.case_id = cc.id\nWHERE cc.status = 'APPROVED'\n  AND (\n    '{{ $json.cycle_type }}' = 'SCHEDULED'\n    OR c.id = {{ $('Merge Triggers').first().json.customer_id || 0 }}\n  )\nORDER BY c.id;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        896,
+        224
+      ],
+      "id": "6f291686-d7c8-4351-89e4-cea8b16f2b58",
+      "name": "Compile Candidates",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1120,
+        224
+      ],
+      "id": "6f744adf-e5a5-45c4-a5a3-f8f3f061596e",
+      "name": "Loop Over Candidates"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO rescreening_candidates (cycle_id, customer_id, person_role)\nVALUES (\n  {{ $('Create Rescreening Cycle').first().json.id }},\n  {{ $json.customer_id }},\n  '{{ $json.person_role }}'\n)\nRETURNING id, customer_id;\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1344,
+        0
+      ],
+      "id": "bf7853b6-2fb6-456e-b176-29cb82984c5f",
+      "name": "Insert Rescreening Candidate",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  pw.id AS pep_watchlist_source_id,\n  pw.full_name AS watchlist_name,\n  pw.pep_category,\n  pw.seniority_level,\n  pw.position_title,\n  ROUND((similarity(\n    LOWER('{{ $('Loop Over Candidates').first().json.full_name }}'),\n    LOWER(pw.full_name)\n  ) * 100)::numeric, 2) AS match_confidence\nFROM pep_watchlist_source pw\nWHERE similarity(\n  LOWER('{{ $('Loop Over Candidates').first().json.full_name }}'),\n  LOWER(pw.full_name)\n) >= 0.6\nORDER BY match_confidence DESC\nLIMIT 1;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1568,
+        0
+      ],
+      "id": "ddcee27a-a76b-48e2-9b39-9273fe349b6c",
+      "name": "Fuzzy Name Screen",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "a6f1fa72-c628-4501-9bc9-49e6f51efd6b",
+              "leftValue": "={{ $json.pep_watchlist_source_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "number",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1792,
+        0
+      ],
+      "id": "a56c7072-2819-4db2-92ac-d0c3b47a40ed",
+      "name": "IF: Any Matches?"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO pep_match_candidates (\n  rescreening_candidate_id,\n  pep_watchlist_source_id,\n  match_confidence,\n  review_status\n) VALUES (\n  {{ $('Insert Rescreening Candidate').first().json.id }},\n  {{ $json.pep_watchlist_source_id }},\n  {{ $json.match_confidence }},\n  'PENDING_REVIEW'\n)\nRETURNING id, match_confidence, review_status;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2016,
+        0
+      ],
+      "id": "7f800675-056b-4f17-ab58-4e221c4eef60",
+      "name": "Insert PEP Match Candidates",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE rescreening_cycles\nSET status = 'COMPLETE', completed_at = now()\nWHERE id = {{ $('Create Rescreening Cycle').first().json.id }}\nRETURNING id, status, completed_at;\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1568,
+        192
+      ],
+      "id": "9b808aec-fb5f-4474-b435-5537b96794d0",
+      "name": "Complete Cycle",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  rc.id AS cycle_id,\n  rc.cycle_type,\n  rc.trigger_reason,\n  COUNT(pmc.id) AS total_matches,\n  COUNT(DISTINCT rsc.customer_id) AS customers_screened\nFROM rescreening_cycles rc\nLEFT JOIN rescreening_candidates rsc ON rsc.cycle_id = rc.id\nLEFT JOIN pep_match_candidates pmc ON pmc.rescreening_candidate_id = rsc.id\nWHERE rc.id = {{ $('Create Rescreening Cycle').first().json.id }}\nGROUP BY rc.id, rc.cycle_type, rc.trigger_reason;\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1792,
+        192
+      ],
+      "id": "59f288b0-f0ed-405a-aa64-c6b4e4a13f5f",
+      "name": "Get Match Count",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{\n  {\n    \"status\": \"SCREENING_COMPLETE\",\n    \"cycle_id\": $('Get Match Count').first().json.cycle_id,\n    \"cycle_type\": $('Get Match Count').first().json.cycle_type,\n    \"trigger_reason\": $('Get Match Count').first().json.trigger_reason,\n    \"customers_screened\": parseInt($('Get Match Count').first().json.customers_screened || 0),\n    \"total_matches_pending_review\": parseInt($('Get Match Count').first().json.total_matches || 0)\n  }\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2240,
+        192
+      ],
+      "id": "fa5d19ad-d315-4d7a-b63e-833c416104b0",
+      "name": "Respond: Screening Complete"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "uc3-analyst-review",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        832
+      ],
+      "id": "ec438aa8-7b7d-4fd7-86ba-21648e2c2ceb",
+      "name": "Webhook Trigger — Analyst Review",
+      "webhookId": "9c6ff63f-8ff5-47e8-b3e3-331be9fd2298"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE pep_match_candidates\nSET review_status = '{{ $json.body.review_decision }}',\n    reviewed_by = '{{ $json.body.reviewer_name }}',\n    reviewed_at = now(),\n    reviewer_notes = '{{ $json.body.reviewer_notes }}'\nWHERE id = {{ $json.body.match_id }}\nRETURNING id, rescreening_candidate_id, pep_watchlist_source_id,\n          match_confidence, review_status;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        224,
+        832
+      ],
+      "id": "4622715a-448f-4130-bc48-bbd9fac15828",
+      "name": "Update Match Review Status",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "df6aa5bd-410d-458f-a45f-afdaa5ecd823",
+              "leftValue": "={{ $json.review_status }}",
+              "rightValue": "CONFIRMED_MATCH",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        448,
+        832
+      ],
+      "id": "6ad0de99-2f27-4cab-a2f1-b8d93c43d667",
+      "name": "IF: Match Confirmed?"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO audit_log_uc3 (entity_type, entity_id, action, actor, details)\nVALUES (\n  'pep_match_candidates',\n  {{ $('Update Match Review Status').first().json.id }},\n  '{{ $('Update Match Review Status').first().json.review_status }}',\n  '{{ $('Webhook Trigger — Analyst Review').first().json.body.reviewer_name }}',\n  '{\"notes\": \"{{ $('Update Match Review Status').first().json.reviewer_notes }}\"}'::jsonb\n)\nRETURNING id;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        672,
+        928
+      ],
+      "id": "ceb36584-2813-4f55-9555-50d2e8bada6f",
+      "name": "Audit Log — Match Rejected",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"{{ $('Update Match Review Status').first().json.review_status }}\",\n  \"match_id\": {{ $('Update Match Review Status').first().json.id }},\n  \"message\": \"Match review recorded. No PEP designation created.\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        896,
+        928
+      ],
+      "id": "e08ed4b2-d606-4e7a-8474-2cf128240f06",
+      "name": "Respond: Match Not Confirmed"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO relationship_classification (\n  pep_match_candidate_id,\n  classification_type,\n  test_joint_beneficial_ownership,\n  test_entity_set_up_for_pep_benefit,\n  test_reasonably_known_close_connection,\n  test_is_spouse,\n  test_is_lineal_descendant_ascendant,\n  test_is_sibling,\n  classified_by,\n  classified_at\n) VALUES (\n  {{ $('Update Match Review Status').first().json.id }},\n  '{{ $('Webhook Trigger — Analyst Review').first().json.body.classification_type }}',\n  {{ $('Webhook Trigger — Analyst Review').first().json.body.test_joint_beneficial_ownership || false }},\n  {{ $('Webhook Trigger — Analyst Review').first().json.body.test_entity_set_up_for_pep_benefit || false }},\n  {{ $('Webhook Trigger — Analyst Review').first().json.body.test_reasonably_known_close_connection || false }},\n  {{ $('Webhook Trigger — Analyst Review').first().json.body.test_is_spouse || false }},\n  {{ $('Webhook Trigger — Analyst Review').first().json.body.test_is_lineal_descendant_ascendant || false }},\n  {{ $('Webhook Trigger — Analyst Review').first().json.body.test_is_sibling || false }},\n  '{{ $('Webhook Trigger — Analyst Review').first().json.body.reviewer_name }}',\n  now()\n)\nRETURNING id, classification_type;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        672,
+        736
+      ],
+      "id": "445e29f3-40cb-494d-81fc-907a20f79bbe",
+      "name": "Insert Relationship Classification",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  rc.person_role,\n  rc.customer_id,\n  c.full_name\nFROM rescreening_candidates rc\nJOIN customers c ON rc.customer_id = c.id\nWHERE rc.id = {{ $('Update Match Review Status').first().json.rescreening_candidate_id }};",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        896,
+        736
+      ],
+      "id": "58734b5b-76ce-4037-b0d4-68870499c4f8",
+      "name": "Get Customer Role",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const webhook = $('Webhook Trigger — Analyst Review').first().json.body;\nconst classification = webhook.classification_type;\nconst personRole = $('Get Customer Role').first().json.person_role;\n\nlet isValid = false;\n\nif (classification === 'DIRECT_PEP') {\n  // Direct PEP always qualifies\n  isValid = true;\n} else if (classification === 'CLOSE_ASSOCIATE') {\n  // At least one Def #12 sub-test must be true\n  isValid = webhook.test_joint_beneficial_ownership ||\n            webhook.test_entity_set_up_for_pep_benefit ||\n            webhook.test_reasonably_known_close_connection;\n} else if (classification === 'FAMILY_MEMBER') {\n  // At least one Def #28 sub-test must be true\n  isValid = webhook.test_is_spouse ||\n            webhook.test_is_lineal_descendant_ascendant ||\n            webhook.test_is_sibling;\n}\n\nreturn [{\n  json: {\n    is_valid_relationship: isValid,\n    classification_type: classification,\n    person_role: personRole,\n    customer_id: $('Get Customer Role').first().json.customer_id,\n    full_name: $('Get Customer Role').first().json.full_name\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1120,
+        736
+      ],
+      "id": "d1871923-a52e-4007-92c8-1ff002e8497a",
+      "name": "Check Relationship Validity"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "42c29b54-99b4-486d-8523-2291aa4d04d0",
+              "leftValue": "={{ $json.is_valid_relationship }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1344,
+        736
+      ],
+      "id": "7c8b08b4-483f-4ec4-b32c-54642dadbb72",
+      "name": "IF: Relationship Valid?"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"CLOSED_NOT_QUALIFYING\",\n  \"match_id\": {{ $('Update Match Review Status').first().json.id }},\n  \"classification_type\": \"{{ $json.classification_type }}\",\n  \"message\": \"Relationship does not meet Def #12 or Def #28 qualifying criteria. No PEP designation created.\"\n}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1568,
+        832
+      ],
+      "id": "9707d5ff-e3c5-451e-8da7-ad84aa758115",
+      "name": "Respond: Not Qualifying Relationship"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO seniority_exclusion_check (\n  pep_match_candidate_id,\n  role_verified,\n  is_senior_enough,\n  checked_by,\n  checked_at\n) VALUES (\n  {{ $('Update Match Review Status').first().json.id }},\n  '{{ $('Webhook Trigger — Analyst Review').first().json.body.role_verified }}',\n  {{ $('Webhook Trigger — Analyst Review').first().json.body.is_senior_enough }},\n  '{{ $('Webhook Trigger — Analyst Review').first().json.body.reviewer_name }}',\n  now()\n)\nRETURNING id, is_senior_enough;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1568,
+        640
+      ],
+      "id": "c2385475-4cd5-4b7e-95f1-89e3ab7ec5f4",
+      "name": "Insert Seniority Check",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "22051665-99e0-49da-885b-2c0a802c544c",
+              "leftValue": "={{ $json.is_senior_enough }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1792,
+        640
+      ],
+      "id": "78335233-6f0d-484f-8a2b-32bb05a8761c",
+      "name": "IF: Senior Enough?"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO audit_log_uc3 (entity_type, entity_id, action, actor, details)\nVALUES (\n  'pep_match_candidates',\n  {{ $('Update Match Review Status').first().json.id }},\n  'EXCLUDED_JUNIOR_MIDDLE_DEF52D',\n  '{{ $('Webhook Trigger — Analyst Review').first().json.body.reviewer_name }}',\n  '{\"role_verified\": \"{{ $('Webhook Trigger — Analyst Review').first().json.body.role_verified }}\"}'::jsonb\n)\nRETURNING id;\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2016,
+        544
+      ],
+      "id": "762e374f-f2e3-4aff-866e-0c8735006437",
+      "name": "Audit Log — Excluded Junior/Middle",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"EXCLUDED_DEF52D\",\n  \"match_id\": {{ $('Update Match Review Status').first().json.id }},\n  \"role_verified\": \"{{ $('Webhook Trigger — Analyst Review').first().json.body.role_verified }}\",\n  \"message\": \"Person excluded from PEP classification per Definition 52(d) — junior/middle ranking.\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2240,
+        544
+      ],
+      "id": "4de821ee-4b55-42f6-bcab-431fb549973f",
+      "name": "Respond: Excluded Junior/Middle"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  pw.pep_category,\n  pw.position_title,\n  pw.full_name AS watchlist_name\nFROM pep_watchlist_source pw\nWHERE pw.id = {{ $('Update Match Review Status').first().json.pep_watchlist_source_id }};",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2016,
+        736
+      ],
+      "id": "afd25473-587f-430f-a879-2551efca20c2",
+      "name": "Get Watchlist Details",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO pep_designations (\n  customer_id,\n  pep_match_candidate_id,\n  designation_type,\n  pep_category,\n  is_active\n) VALUES (\n  {{ $('Check Relationship Validity').first().json.customer_id }},\n  {{ $('Update Match Review Status').first().json.id }},\n  '{{ $('Webhook Trigger — Analyst Review').first().json.body.classification_type }}',\n  '{{ $json.pep_category }}',\n  TRUE\n)\nRETURNING id, customer_id, designation_type, pep_category, designated_at;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2240,
+        736
+      ],
+      "id": "3eb91fa9-86db-47cc-b105-51dbd92f72bd",
+      "name": "Insert PEP Designation",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "shazanali3210@gmail.com",
+        "toEmail": "shazanali3210@gmail.com",
+        "subject": "=[UC3 PEP Alert] NEW PEP Designation — {{ $('Check Relationship Validity').first().json.full_name }}",
+        "html": "=<html>\n<head>\n  <style>\n    body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #333; background: #f4f6f9; margin: 0; padding: 40px; }\n    .card { background: #fff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); max-width: 600px; margin: 0 auto; overflow: hidden; border: 1px solid #e1e4e8; }\n    .header { background: linear-gradient(135deg, #d32f2f 0%, #b71c1c 100%); color: #fff; padding: 30px; text-align: center; }\n    .header h1 { margin: 0; font-size: 22px; font-weight: 600; }\n    .header p { margin: 5px 0 0; opacity: 0.8; font-size: 13px; }\n    .content { padding: 30px; }\n    .badge { display: inline-block; padding: 6px 12px; font-size: 12px; font-weight: 700; border-radius: 20px; text-transform: uppercase; margin-bottom: 20px; background: #fff3cd; color: #856404; }\n    .section-title { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #718096; border-bottom: 1px solid #edf2f7; padding-bottom: 8px; margin-top: 25px; margin-bottom: 15px; }\n    table { width: 100%; border-collapse: collapse; }\n    td { padding: 8px 0; font-size: 14px; }\n    td:first-child { color: #718096; width: 40%; }\n    td:last-child { font-weight: 600; }\n    .footer { background: #f8f9fa; padding: 20px 30px; text-align: center; font-size: 12px; color: #718096; }\n  </style>\n</head>\n<body>\n  <div class=\"card\">\n    <div class=\"header\">\n      <h1>⚠️ PEP Designation Alert</h1>\n      <p>UC3 — PEP Lifecycle Monitoring</p>\n    </div>\n    <div class=\"content\">\n      <span class=\"badge\">ACTION REQUIRED: SOURCE OF WEALTH</span>\n      <div class=\"section-title\">Person Details</div>\n      <table>\n        <tr><td>Customer Name</td><td>{{$('Check Relationship Validity').first().json.full_name}}</td></tr>\n        <tr><td>Customer ID</td><td>{{$('Check Relationship Validity').first().json.customer_id}}</td></tr>\n        <tr><td>Person Role</td><td>{{$('Check Relationship Validity').first().json.person_role}}</td></tr>\n      </table>\n      <div class=\"section-title\">PEP Designation</div>\n      <table>\n        <tr><td>Designation ID</td><td>{{$json.id}}</td></tr>\n        <tr><td>Designation Type</td><td>{{$json.designation_type}}</td></tr>\n        <tr><td>PEP Category</td><td>{{$json.pep_category}}</td></tr>\n        <tr><td>Designated At</td><td>{{$json.designated_at}}</td></tr>\n      </table>\n      <div class=\"section-title\">Next Step</div>\n      <p style=\"font-size:14px;\">Source-of-wealth / source-of-funds evidence must be collected and reconciled (Reg 5 §1(c)) before senior management approval can be requested.</p>\n    </div>\n    <div class=\"footer\">\n      GenosAI AML Compliance Automation • Regulation 5 — Politically Exposed Persons\n    </div>\n  </div>\n</body>\n</html>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        2464,
+        736
+      ],
+      "id": "fc104c21-83d5-46b6-a8ee-b3c3e2c103a4",
+      "name": "Send Email — PEP Designated",
+      "webhookId": "f2ab5e96-ec71-41f8-b5f7-07cd89249bc9",
+      "credentials": {
+        "smtp": {
+          "id": "8Rb60oaV0VVNTtzH",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"PEP_DESIGNATED\",\n  \"designation_id\": {{ $('Insert PEP Designation').first().json.id }},\n  \"customer_id\": {{ $('Insert PEP Designation').first().json.customer_id }},\n  \"designation_type\": \"{{ $('Insert PEP Designation').first().json.designation_type }}\",\n  \"pep_category\": \"{{ $('Insert PEP Designation').first().json.pep_category }}\",\n  \"message\": \"Formal PEP designation created. Next: Submit source-of-wealth evidence via POST /webhook/uc3-sow-approval.\"\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2688,
+        736
+      ],
+      "id": "14439eb5-4520-48ea-b2e2-fc4f0cd97f06",
+      "name": "Respond: PEP Designated"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "uc3-sow-approval",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        1248
+      ],
+      "id": "4af480ea-fda3-46da-83e0-e4233706c60a",
+      "name": "Webhook Trigger — SOW & Approval",
+      "webhookId": "59932dac-c6d4-4707-81c3-398d098f9350"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "ab590c50-0b67-438c-96c6-74e1243731e8",
+              "leftValue": "={{ $json.body.action }}",
+              "rightValue": "submit_evidence",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        224,
+        1248
+      ],
+      "id": "56464daf-901b-4949-b971-a9fc0ecad2d2",
+      "name": "IF: Submit Evidence or Approve?"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO source_of_wealth_evidence (\n  pep_designation_id,\n  evidence_type,\n  file_ref,\n  declared_source,\n  reconciled,\n  reconciliation_notes,\n  reviewed_by,\n  reviewed_at\n) VALUES (\n  {{ $('Webhook Trigger — SOW & Approval').first().json.body.designation_id }},\n  '{{ $('Webhook Trigger — SOW & Approval').first().json.body.evidence_type }}',\n  '{{ $('Webhook Trigger — SOW & Approval').first().json.body.file_ref }}',\n  '{{ $('Webhook Trigger — SOW & Approval').first().json.body.declared_source }}',\n  {{ $('Webhook Trigger — SOW & Approval').first().json.body.reconciled }},\n  '{{ $('Webhook Trigger — SOW & Approval').first().json.body.reconciliation_notes }}',\n  '{{ $('Webhook Trigger — SOW & Approval').first().json.body.reviewer_name }}',\n  now()\n)\nRETURNING id, evidence_type, reconciled;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        448,
+        1152
+      ],
+      "id": "4a138ef3-c0c5-4c9d-a628-7d1717b66ef2",
+      "name": "Insert SOW Evidence",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"EVIDENCE_SUBMITTED\",\n  \"evidence_id\": {{ $json.id }},\n  \"evidence_type\": \"{{ $json.evidence_type }}\",\n  \"reconciled\": {{ $json.reconciled }},\n  \"message\": \"Source-of-wealth evidence recorded. When all evidence is reconciled, submit approval request with action: 'approve'.\"\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        672,
+        1152
+      ],
+      "id": "43985478-ac8b-440d-8295-26d1c0dcb275",
+      "name": "Respond: Evidence Submitted"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  COUNT(*) AS total_evidence,\n  COUNT(*) FILTER (WHERE reconciled = TRUE) AS reconciled_count,\n  COUNT(*) FILTER (WHERE reconciled = FALSE) AS unreconciled_count,\n  CASE\n    WHEN COUNT(*) = 0 THEN FALSE\n    WHEN COUNT(*) FILTER (WHERE reconciled = FALSE) = 0 THEN TRUE\n    ELSE FALSE\n  END AS all_reconciled\nFROM source_of_wealth_evidence\nWHERE pep_designation_id = {{ $('Webhook Trigger — SOW & Approval').first().json.body.designation_id }};",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        448,
+        1344
+      ],
+      "id": "c5ee6246-86bb-4939-b54f-5f550b72b741",
+      "name": "Check All Evidence Reconciled",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "6097238a-b541-4cdc-953f-bceb26a76942",
+              "leftValue": "={{ $json.all_reconciled }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        672,
+        1344
+      ],
+      "id": "75ab9811-1501-4ff6-972d-69fa25ec9f26",
+      "name": "IF: All Reconciled?"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"ON_HOLD\",\n  \"designation_id\": {{ $('Webhook Trigger — SOW & Approval').first().json.body.designation_id }},\n  \"total_evidence\": {{ $('Check All Evidence Reconciled').first().json.total_evidence }},\n  \"unreconciled_count\": {{ $('Check All Evidence Reconciled').first().json.unreconciled_count }},\n  \"message\": \"Source-of-wealth evidence is not fully reconciled. Case cannot proceed to senior management approval until all evidence is reconciled.\"\n}",
+        "options": {
+          "responseCode": 422
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        896,
+        1440
+      ],
+      "id": "3c47cf3f-cab5-401d-ba98-73bb943c52df",
+      "name": "Respond: ON HOLD"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO pep_senior_mgmt_approvals (\n  pep_designation_id,\n  decision,\n  approver_name,\n  approver_role,\n  decision_at,\n  comments\n) VALUES (\n  {{ $('Webhook Trigger — SOW & Approval').first().json.body.designation_id }},\n  '{{ $('Webhook Trigger — SOW & Approval').first().json.body.decision }}',\n  '{{ $('Webhook Trigger — SOW & Approval').first().json.body.approver_name }}',\n  '{{ $('Webhook Trigger — SOW & Approval').first().json.body.approver_role }}',\n  now(),\n  '{{ $('Webhook Trigger — SOW & Approval').first().json.body.comments }}'\n)\nRETURNING id, pep_designation_id, decision;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        896,
+        1248
+      ],
+      "id": "6b5cb0ff-90dc-4474-a1e4-035c62944498",
+      "name": "Insert Senior Mgmt Approval",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "6c5376a5-fd43-4d62-a6dd-fdf4e323965b",
+              "leftValue": "={{ $json.decision }}",
+              "rightValue": "CONTINUE_RELATIONSHIP",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1120,
+        1248
+      ],
+      "id": "81941fac-c938-41d1-9cfb-ac14bc2ae034",
+      "name": "IF: Continue Relationship?"
+    },
+    {
+      "parameters": {
+        "fromEmail": "shazanali3210@gmail.com",
+        "toEmail": "shazanali3210@gmail.com",
+        "subject": "=[UC3 PEP Alert] RELATIONSHIP EXIT — Designation {{ $('Insert Senior Mgmt Approval').first().json.pep_designation_id }}",
+        "html": "=<html>\n<head>\n  <style>\n    body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #333; background: #f4f6f9; margin: 0; padding: 40px; }\n    .card { background: #fff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); max-width: 600px; margin: 0 auto; overflow: hidden; border: 1px solid #e1e4e8; }\n    .header { background: linear-gradient(135deg, #c62828 0%, #b71c1c 100%); color: #fff; padding: 30px; text-align: center; }\n    .header h1 { margin: 0; font-size: 22px; }\n    .header p { margin: 5px 0 0; opacity: 0.8; font-size: 13px; }\n    .content { padding: 30px; }\n    .badge { display: inline-block; padding: 6px 12px; font-size: 12px; font-weight: 700; border-radius: 20px; text-transform: uppercase; margin-bottom: 20px; background: #f8d7da; color: #721c24; }\n    .section-title { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #718096; border-bottom: 1px solid #edf2f7; padding-bottom: 8px; margin-top: 25px; margin-bottom: 15px; }\n    table { width: 100%; border-collapse: collapse; }\n    td { padding: 8px 0; font-size: 14px; }\n    td:first-child { color: #718096; width: 40%; }\n    td:last-child { font-weight: 600; }\n    .footer { background: #f8f9fa; padding: 20px 30px; text-align: center; font-size: 12px; color: #718096; }\n  </style>\n</head>\n<body>\n  <div class=\"card\">\n    <div class=\"header\">\n      <h1>🚫 Relationship Exit Decision</h1>\n      <p>UC3 — PEP Lifecycle Monitoring</p>\n    </div>\n    <div class=\"content\">\n      <span class=\"badge\">EXIT RELATIONSHIP</span>\n      <div class=\"section-title\">Approval Details</div>\n      <table>\n        <tr><td>Designation ID</td><td>{{$('Insert Senior Mgmt Approval').first().json.pep_designation_id}}</td></tr>\n        <tr><td>Decision</td><td>{{$('Insert Senior Mgmt Approval').first().json.decision}}</td></tr>\n        <tr><td>Approver</td><td>{{$('Webhook Trigger — SOW & Approval').first().json.body.approver_name}}</td></tr>\n        <tr><td>Role</td><td>{{$('Webhook Trigger — SOW & Approval').first().json.body.approver_role}}</td></tr>\n      </table>\n      <div class=\"section-title\">Next Step</div>\n      <p style=\"font-size:14px;\">Initiate account closure / off-boarding process per exit policy.</p>\n    </div>\n    <div class=\"footer\">\n      GenosAI AML Compliance Automation • Regulation 5 §1(b) — Senior Management Approval\n    </div>\n  </div>\n</body>\n</html>\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1344,
+        1344
+      ],
+      "id": "5865e0dc-0509-4e3d-874e-6e0bf1011265",
+      "name": "Send Email — Relationship Exit",
+      "webhookId": "3273ac0b-e6e7-4634-a54c-fe19464e33ca",
+      "credentials": {
+        "smtp": {
+          "id": "8Rb60oaV0VVNTtzH",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"EXIT_RELATIONSHIP\",\n  \"designation_id\": {{ $('Insert Senior Mgmt Approval').first().json.pep_designation_id }},\n  \"message\": \"Senior management has decided to exit the relationship. Initiate off-boarding process.\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1568,
+        1344
+      ],
+      "id": "2d111f47-ef02-4209-880e-daa8504c3b7a",
+      "name": "Respond: Relationship Exit"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  pd.id AS designation_id,\n  pd.customer_id,\n  pd.designation_type,\n  pd.pep_category,\n  pd.designated_at,\n  c.full_name\nFROM pep_designations pd\nJOIN customers c ON pd.customer_id = c.id\nWHERE pd.id = {{ $('Insert Senior Mgmt Approval').first().json.pep_designation_id }};",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1344,
+        1152
+      ],
+      "id": "2ac7e9a0-8eec-4048-87dc-fc9b97b8372a",
+      "name": "Get Designation Details",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO enhanced_monitoring_flags (\n  customer_id,\n  pep_designation_id,\n  monitoring_tier,\n  set_at,\n  set_by\n) VALUES (\n  {{ $json.customer_id }},\n  {{ $json.designation_id }},\n  'ENHANCED',\n  now(),\n  '{{ $('Webhook Trigger — SOW & Approval').first().json.body.approver_name }}'\n)\nRETURNING id, customer_id, monitoring_tier;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1568,
+        1152
+      ],
+      "id": "96c5873f-75a4-4e02-8ad0-a2522a9fcf5b",
+      "name": "Insert Enhanced Monitoring Flag",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO recertification_schedule (\n  pep_designation_id,\n  risk_tier,\n  next_recertification_date,\n  last_recertified_at,\n  last_recertified_by\n) VALUES (\n  {{ $('Get Designation Details').first().json.designation_id }},\n  '{{ $('Get Designation Details').first().json.pep_category }}',\n  CASE\n    WHEN '{{ $('Get Designation Details').first().json.pep_category }}' = 'FOREIGN'\n      THEN (now() + INTERVAL '6 months')::date\n    ELSE (now() + INTERVAL '12 months')::date\n  END,\n  now(),\n  '{{ $('Webhook Trigger — SOW & Approval').first().json.body.approver_name }}'\n)\nRETURNING id, risk_tier, next_recertification_date;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1792,
+        1152
+      ],
+      "id": "26bb9183-b9a8-49bb-9381-0b919c6e53ff",
+      "name": "Insert Recertification Schedule",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "shazanali3210@gmail.com",
+        "toEmail": "shazanali3210@gmail.com",
+        "subject": "=[UC3 Complete] PEP Lifecycle Finalized — {{ $('Get Designation Details').first().json.full_name }}",
+        "html": "=<html>\n<head>\n  <style>\n    body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #333; background: #f4f6f9; margin: 0; padding: 40px; }\n    .card { background: #fff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); max-width: 600px; margin: 0 auto; overflow: hidden; border: 1px solid #e1e4e8; }\n    .header { background: linear-gradient(135deg, #1e7e34 0%, #28a745 100%); color: #fff; padding: 30px; text-align: center; }\n    .header h1 { margin: 0; font-size: 22px; font-weight: 600; }\n    .header p { margin: 5px 0 0; opacity: 0.8; font-size: 13px; }\n    .content { padding: 30px; }\n    .badge { display: inline-block; padding: 6px 12px; font-size: 12px; font-weight: 700; border-radius: 20px; text-transform: uppercase; margin-bottom: 20px; background: #e2f9e1; color: #1e7e34; }\n    .section-title { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #718096; border-bottom: 1px solid #edf2f7; padding-bottom: 8px; margin-top: 25px; margin-bottom: 15px; }\n    table { width: 100%; border-collapse: collapse; }\n    td { padding: 8px 0; font-size: 14px; }\n    td:first-child { color: #718096; width: 40%; }\n    td:last-child { font-weight: 600; }\n    .footer { background: #f8f9fa; padding: 20px 30px; text-align: center; font-size: 12px; color: #718096; }\n  </style>\n</head>\n<body>\n  <div class=\"card\">\n    <div class=\"header\">\n      <h1>✅ PEP Lifecycle Complete</h1>\n      <p>UC3 — PEP Lifecycle Monitoring</p>\n    </div>\n    <div class=\"content\">\n      <span class=\"badge\">LIFECYCLE COMPLETE</span>\n      <div class=\"section-title\">PEP Designation</div>\n      <table>\n        <tr><td>Customer Name</td><td>{{$('Get Designation Details').first().json.full_name}}</td></tr>\n        <tr><td>Designation ID</td><td>{{$('Get Designation Details').first().json.designation_id}}</td></tr>\n        <tr><td>Designation Type</td><td>{{$('Get Designation Details').first().json.designation_type}}</td></tr>\n        <tr><td>PEP Category</td><td>{{$('Get Designation Details').first().json.pep_category}}</td></tr>\n      </table>\n      <div class=\"section-title\">Monitoring & Recertification</div>\n      <table>\n        <tr><td>Monitoring Tier</td><td>{{$('Insert Enhanced Monitoring Flag').first().json.monitoring_tier}}</td></tr>\n        <tr><td>Recertification Tier</td><td>{{$json.risk_tier}}</td></tr>\n        <tr><td>Next Recertification</td><td>{{$json.next_recertification_date}}</td></tr>\n      </table>\n      <div class=\"section-title\">Senior Management Decision</div>\n      <table>\n        <tr><td>Decision</td><td>CONTINUE RELATIONSHIP</td></tr>\n        <tr><td>Approver</td><td>{{$('Webhook Trigger — SOW & Approval').first().json.body.approver_name}}</td></tr>\n        <tr><td>Role</td><td>{{$('Webhook Trigger — SOW & Approval').first().json.body.approver_role}}</td></tr>\n      </table>\n    </div>\n    <div class=\"footer\">\n      GenosAI AML Compliance Automation • Regulation 5 — PEP Lifecycle Complete\n    </div>\n  </div>\n</body>\n</html>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        2016,
+        1152
+      ],
+      "id": "836a99ae-3b60-4b4e-ad35-649f8bc0d5f2",
+      "name": "Send Email — Lifecycle Complete",
+      "webhookId": "6b850480-0869-4ce4-8353-9b478b6e4c3a",
+      "credentials": {
+        "smtp": {
+          "id": "8Rb60oaV0VVNTtzH",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"PEP_LIFECYCLE_COMPLETE\",\n  \"designation_id\": {{ $('Get Designation Details').first().json.designation_id }},\n  \"customer_name\": \"{{ $('Get Designation Details').first().json.full_name }}\",\n  \"designation_type\": \"{{ $('Get Designation Details').first().json.designation_type }}\",\n  \"pep_category\": \"{{ $('Get Designation Details').first().json.pep_category }}\",\n  \"monitoring_tier\": \"{{ $('Insert Enhanced Monitoring Flag').first().json.monitoring_tier }}\",\n  \"next_recertification\": \"{{ $('Insert Recertification Schedule').first().json.next_recertification_date }}\",\n  \"message\": \"PEP lifecycle complete. Enhanced monitoring active. Recertification scheduled.\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2240,
+        1152
+      ],
+      "id": "1e79d467-37db-49af-9934-ae32682658f0",
+      "name": "Respond: Lifecycle Complete"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "uc3-stepdown",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        1760
+      ],
+      "id": "f22df162-74f0-4ccb-9963-24a968b953b9",
+      "name": "Webhook Trigger — Step-Down",
+      "webhookId": "40b1ad6d-3be3-410c-8a96-9813ad8e5147"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": " SELECT\n   pd.id,\n   pd.is_active,\n   pd.designation_type,\n   pd.pep_category,\n   c.full_name AS customer_name,\n   emf.monitoring_tier AS current_tier\n FROM pep_designations pd\n JOIN customers c ON pd.customer_id = c.id\n LEFT JOIN enhanced_monitoring_flags emf ON emf.pep_designation_id = pd.id\n WHERE pd.id = {{ $json.body.designation_id }};",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        224,
+        1760
+      ],
+      "id": "8adf3012-9fd4-4020-8eb0-6facbb1666b9",
+      "name": "Validate Designation Active",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "4ed50aa6-516a-4a0f-bb17-0e5c53688e0c",
+              "leftValue": "={{ $json.is_active }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        448,
+        1760
+      ],
+      "id": "5e209d0b-6d4a-42c8-b0c0-26f05421878a",
+      "name": "IF: Designation Active?"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"ERROR\",\n  \"message\": \"PEP designation is not active or does not exist. Step-down cannot be applied.\"\n}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        672,
+        1856
+      ],
+      "id": "d0966027-028d-4a3b-b653-840d24b9d889",
+      "name": "Respond: Designation Not Active"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO monitoring_intensity_log (\n  pep_designation_id,\n  previous_tier,\n  new_tier,\n  reason,\n  approved_by,\n  approved_at\n) VALUES (\n  {{ $('Webhook Trigger — Step-Down').first().json.body.designation_id }},\n  '{{ $('Validate Designation Active').first().json.current_tier }}',\n  'STANDARD',\n  '{{ $('Webhook Trigger — Step-Down').first().json.body.reason }}',\n  '{{ $('Webhook Trigger — Step-Down').first().json.body.approved_by }}',\n  now()\n)\nRETURNING id, previous_tier, new_tier;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        672,
+        1664
+      ],
+      "id": "f6754303-8688-46dd-a9f3-bd4664e32823",
+      "name": "Insert Monitoring Intensity Log",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE enhanced_monitoring_flags\nSET monitoring_tier = 'STANDARD',\n    set_at = now(),\n    set_by = '{{ $('Webhook Trigger — Step-Down').first().json.body.approved_by }}'\nWHERE pep_designation_id = {{ $('Webhook Trigger — Step-Down').first().json.body.designation_id }}\nRETURNING id, customer_id, monitoring_tier;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        896,
+        1664
+      ],
+      "id": "0959fe76-9a45-42ae-9dc3-1dbd1581897f",
+      "name": "Update Monitoring Tier",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"STEP_DOWN_COMPLETE\",\n  \"designation_id\": {{ $('Webhook Trigger — Step-Down').first().json.body.designation_id }},\n  \"previous_tier\": \"{{ $('Insert Monitoring Intensity Log').first().json.previous_tier }}\",\n  \"new_tier\": \"{{ $('Insert Monitoring Intensity Log').first().json.new_tier }}\",\n  \"designation_still_active\": true,\n  \"message\": \"Monitoring intensity reduced to STANDARD. PEP designation remains active and on file (Def #52 'is or has been').\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1328,
+        1664
+      ],
+      "id": "76af66cb-556f-40ea-92e9-0761e33b8d8d",
+      "name": "Respond: Step-Down Complete"
+    },
+    {
+      "parameters": {
+        "fromEmail": "shazanali3210@gmail.com",
+        "toEmail": "shazanali3210@gmail.com",
+        "subject": "=[UC3 Batch Summary] PEP Re-screening Cycle Completed — ID: {{ $json.cycle_id }}",
+        "html": "=<html>\n<head>\n  <style>\n    body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #333; background: #f4f6f9; margin: 0; padding: 40px; }\n    .card { background: #fff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); max-width: 600px; margin: 0 auto; overflow: hidden; border: 1px solid #e1e4e8; }\n    .header { background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%); color: #fff; padding: 30px; text-align: center; }\n    .header h1 { margin: 0; font-size: 22px; font-weight: 600; }\n    .header p { margin: 5px 0 0; opacity: 0.8; font-size: 13px; }\n    .content { padding: 30px; }\n    .badge { display: inline-block; padding: 6px 12px; font-size: 12px; font-weight: 700; border-radius: 20px; text-transform: uppercase; margin-bottom: 20px; background: #e8f4fd; color: #1d8cf8; }\n    .section-title { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #718096; border-bottom: 1px solid #edf2f7; padding-bottom: 8px; margin-top: 25px; margin-bottom: 15px; }\n    table { width: 100%; border-collapse: collapse; }\n    td { padding: 8px 0; font-size: 14px; }\n    td:first-child { color: #718096; width: 40%; }\n    td:last-child { font-weight: 600; }\n    .footer { background: #f8f9fa; padding: 20px 30px; text-align: center; font-size: 12px; color: #718096; }\n  </style>\n</head>\n<body>\n  <div class=\"card\">\n    <div class=\"header\">\n      <h1>📊 Re-screening Cycle Completed</h1>\n      <p>UC3 — PEP Lifecycle Monitoring</p>\n    </div>\n    <div class=\"content\">\n      <span class=\"badge\">BATCH RUN STATUS: COMPLETE</span>\n      <div class=\"section-title\">Execution Details</div>\n      <table>\n        <tr><td>Cycle ID</td><td>{{$json.cycle_id}}</td></tr>\n        <tr><td>Cycle Type</td><td>{{$json.cycle_type}}</td></tr>\n        <tr><td>Trigger Reason</td><td>{{$json.trigger_reason}}</td></tr>\n      </table>\n      <div class=\"section-title\">Screening Metrics</div>\n      <table>\n        <tr><td>Customers Screened</td><td>{{$json.customers_screened}}</td></tr>\n        <tr><td>Fuzzy Match Candidates Found</td><td style=\"color: #e53935;\">{{$json.total_matches}}</td></tr>\n      </table>\n      <div class=\"section-title\">Next Step</div>\n      <p style=\"font-size:14px;\">Please review the match candidates queued in the compliance dashboard to confirm or reject PEP designations.</p>\n    </div>\n    <div class=\"footer\">\n      GenosAI AML Compliance Automation • SBP Regulation 5 Compliance\n    </div>\n  </div>\n</body>\n</html>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        2016,
+        192
+      ],
+      "id": "c6d46c29-3fc0-4c6f-b5af-9fda180397dd",
+      "name": "Send Email — Re-screening Summary",
+      "webhookId": "b4f5cb31-7ede-41a7-9490-93f15bffdae4",
+      "credentials": {
+        "smtp": {
+          "id": "8Rb60oaV0VVNTtzH",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return [ $input.first() ];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1344,
+        192
+      ],
+      "id": "d5dbc8de-3111-4a88-bbcc-b680c8bfeb68",
+      "name": "Collapse to Single Item"
+    },
+    {
+      "parameters": {
+        "fromEmail": "shazanali3210@gmail.com",
+        "toEmail": "shazanali3210@gmail.com",
+        "subject": "=[UC3 Step-Down] PEP Monitoring Intensity Reduced — {{ $('Validate Designation Active').first().json.customer_name }}",
+        "html": "=<html>\n<head>\n  <style>\n    body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #333; background: #f4f6f9; margin: 0; padding: 40px; }\n    .card { background: #fff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); max-width: 600px; margin: 0 auto; overflow: hidden; border: 1px solid #e1e4e8; }\n    .header { background: linear-gradient(135deg, #f39c12 0%, #d35400 100%); color: #fff; padding: 30px; text-align: center; }\n    .header h1 { margin: 0; font-size: 22px; font-weight: 600; }\n    .header p { margin: 5px 0 0; opacity: 0.8; font-size: 13px; }\n    .content { padding: 30px; }\n    .badge { display: inline-block; padding: 6px 12px; font-size: 12px; font-weight: 700; border-radius: 20px; text-transform: uppercase; margin-bottom: 20px; background: #fef5e7; color: #e67e22; }\n    .section-title { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #718096; border-bottom: 1px solid #edf2f7; padding-bottom: 8px; margin-top: 25px; margin-bottom: 15px; }\n    table { width: 100%; border-collapse: collapse; }\n    td { padding: 8px 0; font-size: 14px; }\n    td:first-child { color: #718096; width: 40%; }\n    td:last-child { font-weight: 600; }\n    .footer { background: #f8f9fa; padding: 20px 30px; text-align: center; font-size: 12px; color: #718096; }\n  </style>\n</head>\n<body>\n  <div class=\"card\">\n    <div class=\"header\">\n      <h1>📉 Monitoring Intensity Step-Down</h1>\n      <p>UC3 — PEP Lifecycle Monitoring</p>\n    </div>\n    <div class=\"content\">\n      <span class=\"badge\">STATUS: STEP-DOWN COMPLETED</span>\n      <div class=\"section-title\">Customer Details</div>\n      <table>\n        <tr><td>Customer Name</td><td>{{$('Validate Designation Active').first().json.customer_name}}</td></tr>\n        <tr><td>Designation ID</td><td>{{$('Webhook Trigger — Step-Down').first().json.body.designation_id}}</td></tr>\n        <tr><td>PEP Category</td><td>{{$('Validate Designation Active').first().json.pep_category}}</td></tr>\n      </table>\n      <div class=\"section-title\">Monitoring Transition</div>\n      <table>\n        <tr><td>Previous Tier</td><td>{{$('Insert Monitoring Intensity Log').first().json.previous_tier}}</td></tr>\n        <tr><td>New Tier</td><td style=\"color: #27ae60;\">STANDARD</td></tr>\n        <tr><td>Approved By</td><td>{{$('Webhook Trigger — Step-Down').first().json.body.approved_by}}</td></tr>\n      </table>\n      <div class=\"section-title\">Step-Down Basis</div>\n      <p style=\"font-size:14px;\">{{$('Webhook Trigger — Step-Down').first().json.body.reason}}</p>\n      <p style=\"font-size:13px; color: #e74c3c;\"><strong>Note:</strong> Per Definition 52 (\"is or has been\"), the PEP designation remains active on file for audit integrity.</p>\n    </div>\n    <div class=\"footer\">\n      GenosAI AML Compliance Automation • SBP Regulation 5 Compliance\n    </div>\n  </div>\n</body>\n</html>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1104,
+        1664
+      ],
+      "id": "150984ae-33de-4a69-bddc-f14be89feb27",
+      "name": "Send Email — Monitoring Step-Down",
+      "webhookId": "347c690a-5687-44e3-8bcb-5557b880a3f3",
+      "credentials": {
+        "smtp": {
+          "id": "8Rb60oaV0VVNTtzH",
+          "name": "SMTP account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger (Monthly)": {
+      "main": [
+        [
+          {
+            "node": "Set Cycle Type — Scheduled",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Trigger — Event Rescreen": {
+      "main": [
+        [
+          {
+            "node": "Set Cycle Type — Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Cycle Type — Scheduled": {
+      "main": [
+        [
+          {
+            "node": "Merge Triggers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Cycle Type — Event": {
+      "main": [
+        [
+          {
+            "node": "Merge Triggers",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Triggers": {
+      "main": [
+        [
+          {
+            "node": "Create Rescreening Cycle",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Rescreening Cycle": {
+      "main": [
+        [
+          {
+            "node": "Compile Candidates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compile Candidates": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Candidates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Candidates": {
+      "main": [
+        [
+          {
+            "node": "Collapse to Single Item",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Insert Rescreening Candidate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Rescreening Candidate": {
+      "main": [
+        [
+          {
+            "node": "Fuzzy Name Screen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fuzzy Name Screen": {
+      "main": [
+        [
+          {
+            "node": "IF: Any Matches?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Any Matches?": {
+      "main": [
+        [
+          {
+            "node": "Insert PEP Match Candidates",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop Over Candidates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert PEP Match Candidates": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Candidates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Complete Cycle": {
+      "main": [
+        [
+          {
+            "node": "Get Match Count",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Match Count": {
+      "main": [
+        [
+          {
+            "node": "Send Email — Re-screening Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Trigger — Analyst Review": {
+      "main": [
+        [
+          {
+            "node": "Update Match Review Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Match Review Status": {
+      "main": [
+        [
+          {
+            "node": "IF: Match Confirmed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Match Confirmed?": {
+      "main": [
+        [
+          {
+            "node": "Insert Relationship Classification",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Audit Log — Match Rejected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Audit Log — Match Rejected": {
+      "main": [
+        [
+          {
+            "node": "Respond: Match Not Confirmed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Relationship Classification": {
+      "main": [
+        [
+          {
+            "node": "Get Customer Role",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Customer Role": {
+      "main": [
+        [
+          {
+            "node": "Check Relationship Validity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Relationship Validity": {
+      "main": [
+        [
+          {
+            "node": "IF: Relationship Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Relationship Valid?": {
+      "main": [
+        [
+          {
+            "node": "Insert Seniority Check",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond: Not Qualifying Relationship",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Seniority Check": {
+      "main": [
+        [
+          {
+            "node": "IF: Senior Enough?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Senior Enough?": {
+      "main": [
+        [
+          {
+            "node": "Get Watchlist Details",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Audit Log — Excluded Junior/Middle",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Audit Log — Excluded Junior/Middle": {
+      "main": [
+        [
+          {
+            "node": "Respond: Excluded Junior/Middle",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Watchlist Details": {
+      "main": [
+        [
+          {
+            "node": "Insert PEP Designation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert PEP Designation": {
+      "main": [
+        [
+          {
+            "node": "Send Email — PEP Designated",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email — PEP Designated": {
+      "main": [
+        [
+          {
+            "node": "Respond: PEP Designated",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Trigger — SOW & Approval": {
+      "main": [
+        [
+          {
+            "node": "IF: Submit Evidence or Approve?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Submit Evidence or Approve?": {
+      "main": [
+        [
+          {
+            "node": "Insert SOW Evidence",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check All Evidence Reconciled",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert SOW Evidence": {
+      "main": [
+        [
+          {
+            "node": "Respond: Evidence Submitted",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond: Evidence Submitted": {
+      "main": [
+        []
+      ]
+    },
+    "Check All Evidence Reconciled": {
+      "main": [
+        [
+          {
+            "node": "IF: All Reconciled?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: All Reconciled?": {
+      "main": [
+        [
+          {
+            "node": "Insert Senior Mgmt Approval",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond: ON HOLD",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Senior Mgmt Approval": {
+      "main": [
+        [
+          {
+            "node": "IF: Continue Relationship?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Continue Relationship?": {
+      "main": [
+        [
+          {
+            "node": "Get Designation Details",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Email — Relationship Exit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email — Relationship Exit": {
+      "main": [
+        [
+          {
+            "node": "Respond: Relationship Exit",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Designation Details": {
+      "main": [
+        [
+          {
+            "node": "Insert Enhanced Monitoring Flag",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Enhanced Monitoring Flag": {
+      "main": [
+        [
+          {
+            "node": "Insert Recertification Schedule",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Recertification Schedule": {
+      "main": [
+        [
+          {
+            "node": "Send Email — Lifecycle Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email — Lifecycle Complete": {
+      "main": [
+        [
+          {
+            "node": "Respond: Lifecycle Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Trigger — Step-Down": {
+      "main": [
+        [
+          {
+            "node": "Validate Designation Active",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Designation Active": {
+      "main": [
+        [
+          {
+            "node": "IF: Designation Active?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Designation Active?": {
+      "main": [
+        [
+          {
+            "node": "Insert Monitoring Intensity Log",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond: Designation Not Active",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Monitoring Intensity Log": {
+      "main": [
+        [
+          {
+            "node": "Update Monitoring Tier",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Monitoring Tier": {
+      "main": [
+        [
+          {
+            "node": "Send Email — Monitoring Step-Down",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email — Re-screening Summary": {
+      "main": [
+        [
+          {
+            "node": "Respond: Screening Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collapse to Single Item": {
+      "main": [
+        [
+          {
+            "node": "Complete Cycle",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email — Monitoring Step-Down": {
+      "main": [
+        [
+          {
+            "node": "Respond: Step-Down Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false,
+    "timeSavedMode": "fixed",
+    "timezone": "Asia/Karachi",
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "e6f732cd-9d44-4e44-8904-1b10848d2e22",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "eeda824893ce98822b0b4043b43e928e49b7621bae4482aa410a3b9883ce47cf"
+  },
+  "nodeGroups": [],
+  "id": "yNEZPnoqOuY0hdzr",
+  "tags": []
+}

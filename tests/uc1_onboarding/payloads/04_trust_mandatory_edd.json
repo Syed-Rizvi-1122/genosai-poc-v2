@@ -1,0 +1,111 @@
+{
+  "customer_type_code": "TRUST_CLUB_SOCIETY",
+  "is_occasional_customer": false,
+  "applicant": {
+    "full_name": "The Hope Foundation Trust",
+    "mother_maiden_name": "",
+    "father_spouse_name": "",
+    "date_of_birth": null,
+    "place_of_birth": "",
+    "permanent_address": "House 12, Street 3, G-6/3, Islamabad",
+    "current_mailing_address": "House 12, Street 3, G-6/3, Islamabad",
+    "identity_doc_type": "CNIC",
+    "identity_doc_number": "3740522334455",
+    "identity_doc_issue_date": "2021-04-10",
+    "identity_doc_expiry_date": "2031-04-09",
+    "contact_mobile": "+923335556677",
+    "contact_landline": "+92512223334",
+    "email": "contact@hopefoundation.org",
+    "nationality_status": "RESIDENT",
+    "profession_source_of_income": "Philanthropic Endowment",
+    "purpose_of_relationship": "Trust Fund Disbursements Account",
+    "next_of_kin": "",
+    "fatca_crs_declared": true
+  },
+  "trust_details": {
+    "settlor_name": "Dr. Amjad Saqib",
+    "protector_name": "Justice (R) Tassaduq Hussain",
+    "trustees": [
+      { "full_name": "Imran Khan Afridi" },
+      { "full_name": "Dr. Sania Nishtar" }
+    ],
+    "beneficiaries": [
+      { "full_name": "Poor Patients Class A" },
+      { "full_name": "Orphan Students Class B" }
+    ]
+  },
+  "documents": [
+    {
+      "document_type": "IDENTITY_DOCUMENT",
+      "applies_to_role": "GOVERNING_BODY",
+      "file_ref": "/docs/trustee_sania_cnic.pdf",
+      "is_attested": true,
+      "attested_by": "Oath Commissioner",
+      "verification_source": "GAZETTED_OFFICER"
+    },
+    {
+      "document_type": "IDENTITY_DOCUMENT",
+      "applies_to_role": "AUTHORIZED_SIGNATORIES",
+      "file_ref": "/docs/auth_signatory_cnic.pdf",
+      "is_attested": false,
+      "attested_by": null,
+      "verification_source": "BIOMETRIC"
+    },
+    {
+      "document_type": "IDENTITY_DOCUMENT",
+      "applies_to_role": "SETTLOR",
+      "file_ref": "/docs/settlor_amjad_cnic.pdf",
+      "is_attested": true,
+      "attested_by": "Oath Commissioner",
+      "verification_source": "GAZETTED_OFFICER"
+    },
+    {
+      "document_type": "IDENTITY_DOCUMENT",
+      "applies_to_role": "PROTECTOR",
+      "file_ref": "/docs/protector_cnic.pdf",
+      "is_attested": true,
+      "attested_by": "Oath Commissioner",
+      "verification_source": "GAZETTED_OFFICER"
+    },
+    {
+      "document_type": "IDENTITY_DOCUMENT",
+      "applies_to_role": "BENEFICIARIES",
+      "file_ref": "/docs/beneficiary_class_description.pdf",
+      "is_attested": true,
+      "attested_by": "Trust Chairman",
+      "verification_source": "GAZETTED_OFFICER"
+    },
+    {
+      "document_type": "DECLARATION_ON_ULTIMATE_CONTROL_PURPOSE_SOURCE_OF_FUNDS",
+      "applies_to_role": "GOVERNING_BODY",
+      "file_ref": "/docs/declaration_funds.pdf",
+      "is_attested": true,
+      "attested_by": "Trust Trustees",
+      "verification_source": "GAZETTED_OFFICER"
+    },
+    {
+      "document_type": "CERTIFICATE_OF_REGISTRATION_OR_INSTRUMENT_OF_TRUST",
+      "applies_to_role": null,
+      "file_ref": "/docs/trust_deed.pdf",
+      "is_attested": true,
+      "attested_by": "Sub-Registrar Islamabad",
+      "verification_source": "GAZETTED_OFFICER"
+    },
+    {
+      "document_type": "BY_LAWS_RULES_REGULATIONS",
+      "applies_to_role": null,
+      "file_ref": "/docs/trust_rules.pdf",
+      "is_attested": true,
+      "attested_by": "Trust Board",
+      "verification_source": "GAZETTED_OFFICER"
+    },
+    {
+      "document_type": "GOVERNING_BODY_RESOLUTION_TO_OPEN_ACCOUNT",
+      "applies_to_role": null,
+      "file_ref": "/docs/trust_resolution.pdf",
+      "is_attested": true,
+      "attested_by": "Trust Board Secretary",
+      "verification_source": "GAZETTED_OFFICER"
+    }
+  ]
+}

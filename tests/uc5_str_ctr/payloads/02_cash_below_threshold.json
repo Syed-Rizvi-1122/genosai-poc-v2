@@ -1,0 +1,12 @@
+{
+  "scenario": "CTR Scenario 2: Cash deposit below threshold (Not Flagged)",
+  "transaction": {
+    "customer_id": 102,
+    "transaction_type": "CASH_DEPOSIT",
+    "amount": 500000.00,
+    "currency": "PKR",
+    "branch_code": "BR-001",
+    "channel": "BRANCH_TELLER",
+    "description": "Routine cash deposit"
+  }
+}

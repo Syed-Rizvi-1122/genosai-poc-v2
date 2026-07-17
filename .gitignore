@@ -1,0 +1,27 @@
+# =============================================================================
+# Git Ignore — GenosAI AML/CFT/CPF POC v2
+# =============================================================================
+
+# Environment secrets
+.env
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Extracted PDF text (temporary)
+.pdf_extract.txt
+
+# Node
+node_modules/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Docker volumes (data is in named volumes, not on disk)

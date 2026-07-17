@@ -1,0 +1,46 @@
+{
+  "scenario": "Scenario 1: Foreign PEP match on company director (Full Path)",
+  "customer": {
+    "case_ref": "UC3-TEST-CASE-01",
+    "customer_type_code": "COMPANY",
+    "full_name": "Omar Yusuf Sheikh",
+    "date_of_birth": "1972-06-05",
+    "role": "DIRECTOR"
+  },
+  "flow_a": {
+    "trigger_reason": "BO_CHANGE"
+  },
+  "flow_b": {
+    "review_decision": "CONFIRMED_MATCH",
+    "reviewer_name": "Analyst Ahmed",
+    "reviewer_notes": "Name and DOB match confirmed via independent passport verification",
+    "classification_type": "DIRECT_PEP",
+    "test_joint_beneficial_ownership": false,
+    "test_entity_set_up_for_pep_benefit": false,
+    "test_reasonably_known_close_connection": false,
+    "test_is_spouse": false,
+    "test_is_lineal_descendant_ascendant": false,
+    "test_is_sibling": false,
+    "role_verified": "Foreign Trade Secretary (Country X)",
+    "is_senior_enough": true
+  },
+  "flow_c": {
+    "evidence": {
+      "evidence_type": "ASSET_DECLARATION",
+      "file_ref": "/uploads/asset_declaration_sheikh.pdf",
+      "declared_source": "Government trade compensation and investments",
+      "reconciled": true,
+      "reconciliation_notes": "Asset declaration matches verified bank account statements",
+      "reviewer_name": "Analyst Ahmed"
+    },
+    "approval": {
+      "decision": "CONTINUE_RELATIONSHIP",
+      "approver_name": "Director Compliance",
+      "approver_role": "Chief Compliance Officer",
+      "comments": "Acceptable risk profile given verified SOW and nature of commercial transactions"
+    }
+  },
+  "flow_d": {
+    "apply_stepdown": false
+  }
+}

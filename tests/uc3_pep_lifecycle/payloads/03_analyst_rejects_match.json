@@ -1,0 +1,18 @@
+{
+  "scenario": "Scenario 3: Analyst Rejects Match as Not Same Person (Close at Phase 3)",
+  "customer": {
+    "case_ref": "UC3-TEST-CASE-03",
+    "customer_type_code": "INDIVIDUAL",
+    "full_name": "Ahmed Raza Khan",
+    "date_of_birth": "1990-12-15",
+    "role": "PRIMARY"
+  },
+  "flow_a": {
+    "trigger_reason": "PROFILE_UPDATE"
+  },
+  "flow_b": {
+    "review_decision": "REJECTED_NOT_SAME_PERSON",
+    "reviewer_name": "Analyst Fatima",
+    "reviewer_notes": "Customer DOB is 1990, but watchlist PEP Ahmed Raza Khan DOB is 1965. Clear false positive."
+  }
+}

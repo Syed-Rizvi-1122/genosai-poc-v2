@@ -1,0 +1,570 @@
+{
+  "name": "UC5 - CTR Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "uc5-ctr-transaction",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        32
+      ],
+      "id": "70155dcc-b4ce-4c73-bf85-c638cb8897ea",
+      "name": "Webhook Trigger — Transaction Intake",
+      "webhookId": "9901651f-c769-4527-ab13-83ee79b6bb77"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO transactions (customer_id, account_id, transaction_type, amount, currency, branch_code, channel, description)\nVALUES (\n  {{ $json.body.customer_id }},\n  NULL,\n  '{{ $json.body.transaction_type }}',\n  {{ $json.body.amount }},\n  '{{ $json.body.currency || 'PKR' }}',\n  '{{ $json.body.branch_code }}',\n  '{{ $json.body.channel }}',\n  '{{ $json.body.description || '' }}'\n)\nRETURNING id, customer_id, transaction_type, amount, currency, executed_at;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        224,
+        32
+      ],
+      "id": "8b1c001e-52dd-4d1b-816a-b40e77a8d84e",
+      "name": "Insert Transaction",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT config_value, is_confirmed, source_note\nFROM regulatory_thresholds_config\nWHERE config_key = 'CTR_THRESHOLD_PKR';",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        448,
+        32
+      ],
+      "id": "b7c5af5f-8571-4dcf-8ac5-bbc9ad132487",
+      "name": "Lookup CTR Threshold",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "5a8c44d7-a835-4e5b-a5a8-241058c2af1c",
+              "leftValue": "={{ $('Insert Transaction').first().json.transaction_type }}",
+              "rightValue": "CASH",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        672,
+        32
+      ],
+      "id": "6d709da4-3a03-455e-b2e6-b341ea848882",
+      "name": "IF: Cash Transaction?"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"NO_CTR_REQUIRED\", \"reason\": \"Transaction type is not cash (CASH_DEPOSIT or CASH_WITHDRAWAL). CTRs only apply to cash transactions.\", \"transaction_id\": $('Insert Transaction').first().json.id, \"transaction_type\": $('Insert Transaction').first().json.transaction_type } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        896,
+        128
+      ],
+      "id": "ba952b70-7f6c-4bb6-a358-f7a26bd58521",
+      "name": "Respond: Not Cash"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "9ac977bb-cb3d-42f4-aec9-d40390ff1870",
+              "leftValue": "={{ $('Insert Transaction').first().json.amount }}",
+              "rightValue": "={{ $('Lookup CTR Threshold').first().json.config_value }}",
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        896,
+        -64
+      ],
+      "id": "667e2d4e-378f-453c-89d3-e4de1849b163",
+      "name": "IF: Amount >= Threshold?"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"BELOW_THRESHOLD\", \"transaction_id\": $('Insert Transaction').first().json.id, \"amount\": $('Insert Transaction').first().json.amount, \"threshold\": $('Lookup CTR Threshold').first().json.config_value, \"message\": \"Transaction amount is below CTR threshold. No CTR filing required.\" } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1120,
+        32
+      ],
+      "id": "359d7905-3001-4cc1-8ef9-6eabe3be7cc4",
+      "name": "Respond: Below Threshold"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO ctr_candidates (transaction_id, threshold_applied, data_accuracy_status)\nVALUES (\n  {{ $('Insert Transaction').first().json.id }},\n  {{ $('Lookup CTR Threshold').first().json.config_value }},\n  'PENDING_CHECK'\n)\nRETURNING id, transaction_id, threshold_applied, data_accuracy_status, flagged_at;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1120,
+        -160
+      ],
+      "id": "dca880eb-b66e-4ac3-b9c3-81d17427e6d6",
+      "name": "Insert CTR Candidate",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "shazanali3210@gmail.com",
+        "toEmail": "shazanali3210@gmail.com",
+        "subject": "=[UC5 CTR] New CTR Candidate Flagged — Transaction #{{ $('Insert Transaction').first().json.id }}",
+        "html": "=<html>\n<head>\n  <style>\n    body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #333; background: #f4f6f9; margin: 0; padding: 40px; }\n    .card { background: #fff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); max-width: 600px; margin: 0 auto; overflow: hidden; border: 1px solid #e1e4e8; }\n    .header { background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%); color: #fff; padding: 30px; text-align: center; }\n    .header h1 { margin: 0; font-size: 22px; font-weight: 600; }\n    .header p { margin: 5px 0 0; opacity: 0.8; font-size: 13px; }\n    .content { padding: 30px; }\n    .badge { display: inline-block; padding: 6px 12px; font-size: 12px; font-weight: 700; border-radius: 20px; text-transform: uppercase; margin-bottom: 20px; background: #fff3cd; color: #856404; }\n    .section-title { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #718096; border-bottom: 1px solid #edf2f7; padding-bottom: 8px; margin-top: 25px; margin-bottom: 15px; }\n    table { width: 100%; border-collapse: collapse; }\n    td { padding: 8px 0; font-size: 14px; }\n    td:first-child { color: #718096; width: 40%; }\n    td:last-child { font-weight: 600; }\n    .footer { background: #f8f9fa; padding: 20px 30px; text-align: center; font-size: 12px; color: #718096; }\n  </style>\n</head>\n<body>\n  <div class=\"card\">\n    <div class=\"header\">\n      <h1>💰 CTR Candidate Flagged</h1>\n      <p>UC5 — Currency Transaction Report Pipeline</p>\n    </div>\n    <div class=\"content\">\n      <span class=\"badge\">ACTION REQUIRED: VERIFY DATA ACCURACY</span>\n      <div class=\"section-title\">Transaction Details</div>\n      <table>\n        <tr><td>Transaction ID</td><td>{{$('Insert Transaction').first().json.id}}</td></tr>\n        <tr><td>Customer ID</td><td>{{$('Insert Transaction').first().json.customer_id}}</td></tr>\n        <tr><td>Type</td><td>{{$('Insert Transaction').first().json.transaction_type}}</td></tr>\n        <tr><td>Amount (PKR)</td><td style=\"color: #e53935;\">{{$('Insert Transaction').first().json.amount}}</td></tr>\n        <tr><td>Threshold Applied</td><td>{{$('Lookup CTR Threshold').first().json.config_value}}</td></tr>\n      </table>\n      <div class=\"section-title\">Next Step</div>\n      <p style=\"font-size:14px;\">Please verify the data accuracy of this CTR candidate. Submit verification via <code>POST /webhook/uc5-ctr-verify</code> with the candidate ID.</p>\n    </div>\n    <div class=\"footer\">\n      GenosAI AML Compliance Automation • SBP Regulation 7 — CTR Filing\n    </div>\n  </div>\n</body>\n</html>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1344,
+        -160
+      ],
+      "id": "b6b415d5-f411-412f-9a0e-113f676b7669",
+      "name": "Send Email — CTR Candidate Flagged",
+      "webhookId": "c8e4896a-3fce-4305-a368-92444d947c29",
+      "credentials": {
+        "smtp": {
+          "id": "8Rb60oaV0VVNTtzH",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"CTR_CANDIDATE_FLAGGED\", \"ctr_candidate_id\": $('Insert CTR Candidate').first().json.id, \"transaction_id\": $('Insert Transaction').first().json.id, \"amount\": $('Insert Transaction').first().json.amount, \"threshold_applied\": $('Insert CTR Candidate').first().json.threshold_applied, \"data_accuracy_status\": \"PENDING_CHECK\", \"message\": \"Transaction flagged for CTR filing. Verify data accuracy via POST /webhook/uc5-ctr-verify.\" } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1568,
+        -160
+      ],
+      "id": "68dd321f-94c8-497a-bab1-68c013cca9c4",
+      "name": "Respond: CTR Candidate Created"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "uc5-ctr-verify",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        448
+      ],
+      "id": "8d1fecee-262c-4a79-94a6-8378fa9dcde4",
+      "name": "Webhook Trigger — CTR Verify",
+      "webhookId": "5b02a228-8acf-4dd3-98b3-1b9b4579cbd8"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE ctr_candidates\nSET data_accuracy_status = '{{ $json.body.data_accuracy_status }}',\n    verified_by = '{{ $json.body.verified_by }}',\n    verified_at = now()\nWHERE id = {{ $json.body.ctr_candidate_id }}\nRETURNING id, transaction_id, data_accuracy_status, verified_by, verified_at;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        224,
+        448
+      ],
+      "id": "f254438e-a7f4-40ff-9f12-04d0daa336ce",
+      "name": "Update CTR Candidate Status",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"CORRECTION_NEEDED\", \"ctr_candidate_id\": $('Update CTR Candidate Status').first().json.id, \"message\": \"Data accuracy check failed. Please correct the transaction data and resubmit for verification.\" } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        672,
+        544
+      ],
+      "id": "4d97dcad-8e64-4642-a5fb-51add6f93d4e",
+      "name": "Respond: Correction Needed"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  t.id AS transaction_id,\n  t.customer_id,\n  t.transaction_type,\n  t.amount,\n  t.currency,\n  t.branch_code,\n  t.channel,\n  t.executed_at,\n  c.full_name AS customer_name\nFROM transactions t\nJOIN customers c ON t.customer_id = c.id\nWHERE t.id = {{ $('Update CTR Candidate Status').first().json.transaction_id }};",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        672,
+        352
+      ],
+      "id": "4eba1349-bf87-4af3-9af1-9e6e4bff0e3d",
+      "name": "Get Transaction Details",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "628ac572-a621-406f-b7c6-878a3e1c6861",
+              "leftValue": "={{ $json.data_accuracy_status }}",
+              "rightValue": "VERIFIED",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        448,
+        448
+      ],
+      "id": "7d85c407-e5f9-40e7-8a89-6080cb468b01",
+      "name": "IF: Data Verified?"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO ctr_filings (ctr_candidate_id, filing_reference, retention_until)\nVALUES (\n  {{ $('Update CTR Candidate Status').first().json.id }},\n  'FMU-CTR-' || to_char(now(), 'YYYYMMDD-HH24MISS') || '-' || {{ $('Update CTR Candidate Status').first().json.id }},\n  GREATEST('{{ $json.executed_at }}'::timestamp, now())::date + interval '10 years'\n)\nRETURNING id, ctr_candidate_id, filing_reference, filed_at, retention_until;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        896,
+        352
+      ],
+      "id": "39cd1e43-21de-41fa-8080-970318b87aad",
+      "name": "Insert CTR Filing",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "shazanali3210@gmail.com",
+        "toEmail": "shazanali3210@gmail.com",
+        "subject": "=[UC5 CTR] CTR Filed — Reference {{ $json.filing_reference }}",
+        "html": "=<html>\n<head>\n  <style>\n    body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #333; background: #f4f6f9; margin: 0; padding: 40px; }\n    .card { background: #fff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); max-width: 600px; margin: 0 auto; overflow: hidden; border: 1px solid #e1e4e8; }\n    .header { background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%); color: #fff; padding: 30px; text-align: center; }\n    .header h1 { margin: 0; font-size: 22px; font-weight: 600; }\n    .header p { margin: 5px 0 0; opacity: 0.8; font-size: 13px; }\n    .content { padding: 30px; }\n    .badge { display: inline-block; padding: 6px 12px; font-size: 12px; font-weight: 700; border-radius: 20px; text-transform: uppercase; margin-bottom: 20px; background: #e8f5e9; color: #2e7d32; }\n    .section-title { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #718096; border-bottom: 1px solid #edf2f7; padding-bottom: 8px; margin-top: 25px; margin-bottom: 15px; }\n    table { width: 100%; border-collapse: collapse; }\n    td { padding: 8px 0; font-size: 14px; }\n    td:first-child { color: #718096; width: 40%; }\n    td:last-child { font-weight: 600; }\n    .footer { background: #f8f9fa; padding: 20px 30px; text-align: center; font-size: 12px; color: #718096; }\n  </style>\n</head>\n<body>\n  <div class=\"card\">\n    <div class=\"header\">\n      <h1>✅ CTR Filed Successfully</h1>\n      <p>UC5 — Currency Transaction Report Pipeline</p>\n    </div>\n    <div class=\"content\">\n      <span class=\"badge\">STATUS: FILED WITH FMU</span>\n      <div class=\"section-title\">Filing Details</div>\n      <table>\n        <tr><td>Filing Reference</td><td>{{$json.filing_reference}}</td></tr>\n        <tr><td>Filed At</td><td>{{$json.filed_at}}</td></tr>\n        <tr><td>Retention Until</td><td>{{$json.retention_until}}</td></tr>\n      </table>\n      <div class=\"section-title\">Transaction Details</div>\n      <table>\n        <tr><td>Customer</td><td>{{$('Get Transaction Details').first().json.customer_name}}</td></tr>\n        <tr><td>Amount (PKR)</td><td>{{$('Get Transaction Details').first().json.amount}}</td></tr>\n        <tr><td>Type</td><td>{{$('Get Transaction Details').first().json.transaction_type}}</td></tr>\n        <tr><td>Branch</td><td>{{$('Get Transaction Details').first().json.branch_code}}</td></tr>\n      </table>\n      <div class=\"section-title\">Regulatory Basis</div>\n      <p style=\"font-size:14px;\">Filed under AML Act 2010 §7 — SBP Regulation 7. Records retained for 10 years per Reg 8 §3.</p>\n    </div>\n    <div class=\"footer\">\n      GenosAI AML Compliance Automation • SBP Regulation 7 — CTR Filing\n    </div>\n  </div>\n</body>\n</html>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        1120,
+        352
+      ],
+      "id": "92451f67-f3a6-4992-be5f-5d35493330bc",
+      "name": "Send Email — CTR Filed",
+      "webhookId": "e9bf2b45-96a5-46b0-b200-997d59560c87",
+      "credentials": {
+        "smtp": {
+          "id": "8Rb60oaV0VVNTtzH",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"CTR_FILED\", \"filing_id\": $('Insert CTR Filing').first().json.id, \"filing_reference\": $('Insert CTR Filing').first().json.filing_reference, \"filed_at\": $('Insert CTR Filing').first().json.filed_at, \"retention_until\": $('Insert CTR Filing').first().json.retention_until, \"transaction_id\": $('Get Transaction Details').first().json.transaction_id, \"customer_name\": $('Get Transaction Details').first().json.customer_name, \"amount\": $('Get Transaction Details').first().json.amount, \"message\": \"CTR filed with FMU (mock). Record retained until \" + $('Insert CTR Filing').first().json.retention_until + \" per Reg 8 §3.\" } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1344,
+        352
+      ],
+      "id": "08659682-18d8-4981-a727-11f47bf1ecda",
+      "name": "Respond: CTR Filed"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook Trigger — Transaction Intake": {
+      "main": [
+        [
+          {
+            "node": "Insert Transaction",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Transaction": {
+      "main": [
+        [
+          {
+            "node": "Lookup CTR Threshold",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lookup CTR Threshold": {
+      "main": [
+        [
+          {
+            "node": "IF: Cash Transaction?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Cash Transaction?": {
+      "main": [
+        [
+          {
+            "node": "IF: Amount >= Threshold?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond: Not Cash",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Amount >= Threshold?": {
+      "main": [
+        [
+          {
+            "node": "Insert CTR Candidate",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond: Below Threshold",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert CTR Candidate": {
+      "main": [
+        [
+          {
+            "node": "Send Email — CTR Candidate Flagged",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email — CTR Candidate Flagged": {
+      "main": [
+        [
+          {
+            "node": "Respond: CTR Candidate Created",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook Trigger — CTR Verify": {
+      "main": [
+        [
+          {
+            "node": "Update CTR Candidate Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update CTR Candidate Status": {
+      "main": [
+        [
+          {
+            "node": "IF: Data Verified?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Data Verified?": {
+      "main": [
+        [
+          {
+            "node": "Get Transaction Details",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond: Correction Needed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Transaction Details": {
+      "main": [
+        [
+          {
+            "node": "Insert CTR Filing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert CTR Filing": {
+      "main": [
+        [
+          {
+            "node": "Send Email — CTR Filed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email — CTR Filed": {
+      "main": [
+        [
+          {
+            "node": "Respond: CTR Filed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "3ad9b9fe-8d4a-4996-8a3c-6b6732b16658",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "eeda824893ce98822b0b4043b43e928e49b7621bae4482aa410a3b9883ce47cf"
+  },
+  "nodeGroups": [],
+  "id": "5QOU9owRKx6Mjt7l",
+  "tags": []
+}

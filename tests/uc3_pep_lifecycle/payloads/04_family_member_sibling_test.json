@@ -1,0 +1,43 @@
+{
+  "scenario": "Scenario 4: SBP Family Member Sibling Test (Passes Phase 4)",
+  "customer": {
+    "case_ref": "UC3-TEST-CASE-04",
+    "customer_type_code": "INDIVIDUAL",
+    "full_name": "Bilal Hassan Mirza",
+    "date_of_birth": "1988-02-20",
+    "role": "PRIMARY"
+  },
+  "flow_a": {
+    "trigger_reason": "PROFILE_UPDATE"
+  },
+  "flow_b": {
+    "review_decision": "CONFIRMED_MATCH",
+    "reviewer_name": "Analyst Ahmed",
+    "reviewer_notes": "Customer is the biological sibling of domestic PEP Hassan Ali Mirza (Chairman Senate Standing Committee)",
+    "classification_type": "FAMILY_MEMBER",
+    "test_joint_beneficial_ownership": false,
+    "test_entity_set_up_for_pep_benefit": false,
+    "test_reasonably_known_close_connection": false,
+    "test_is_spouse": false,
+    "test_is_lineal_descendant_ascendant": false,
+    "test_is_sibling": true,
+    "role_verified": "Sibling of Chairman Senate Standing Committee",
+    "is_senior_enough": true
+  },
+  "flow_c": {
+    "evidence": {
+      "evidence_type": "BANK_STATEMENT",
+      "file_ref": "/uploads/bilal_mirza_bank_statement.pdf",
+      "declared_source": "Personal business salary and dividends",
+      "reconciled": true,
+      "reconciliation_notes": "SOW verified against business registration and tax certificates",
+      "reviewer_name": "Analyst Ahmed"
+    },
+    "approval": {
+      "decision": "CONTINUE_RELATIONSHIP",
+      "approver_name": "Director Compliance",
+      "approver_role": "Chief Compliance Officer",
+      "comments": "Relationship continued. Monitoring intensity enhanced. Recertification set to 12 months."
+    }
+  }
+}

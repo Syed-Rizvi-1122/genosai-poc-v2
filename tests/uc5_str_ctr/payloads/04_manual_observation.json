@@ -1,0 +1,35 @@
+{
+  "scenario": "STR Scenario 4: Manual Staff Observation leads to approved STR filing",
+  "customer_id": 104,
+  "trigger": {
+    "path": "uc5-str-manual-obs",
+    "body": {
+      "source_reference": "OBS-STAFF-12",
+      "description": "Customer requested cash withdrawal while asking questions about cash reporting limits"
+    }
+  },
+  "analyst_investigate": {
+    "analyst_name": "Analyst Ahmed",
+    "analyst_role": "COMPLIANCE_ANALYST",
+    "action": "investigate",
+    "transaction_history_reviewed": [
+      { "id": 2, "amount": 3000000.00 }
+    ],
+    "background_purpose_findings": "Investigated counter observations. Customer showed high anxiety and intent to circumvent threshold checks.",
+    "narrative_draft": "The customer attempted to withdraw large cash sums and asked structured questions on threshold reporting.",
+    "narrative_edited_by_human": true
+  },
+  "analyst_decide": {
+    "analyst_name": "Analyst Ahmed",
+    "analyst_role": "COMPLIANCE_ANALYST",
+    "action": "decide",
+    "decision": "FILE_STR",
+    "rationale": "Clear behavioral indicators of structuring attempt at counter."
+  },
+  "officer_signoff": {
+    "officer_name": "Director Compliance",
+    "officer_role": "COMPLIANCE_OFFICER",
+    "decision": "APPROVED",
+    "comments": "Agreed with analyst findings. Structural indicators are prominent. Proceed to file."
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "transaction_ref": "TXN-UC8-005",
+  "sending_institution": "SBP_MEMBER_BANK_A",
+  "receiving_institution": "Genos Bank",
+  "transfer_type": "INDIVIDUAL",
+  "direction": "INCOMING",
+  "is_own_behalf": true,
+  "amount": 10000000.00,
+  "currency": "PKR",
+  "value_date": "2026-07-17",
+  "purpose_of_transfer": "Interbank Position Settlement",
+  "originator_beneficiary_relationship": "Interbank clearing",
+  "originator_name": "SBP_MEMBER_BANK_A",
+  "originator_account_ref": "CLEARING-A-1",
+  "originator_id_doc_number": "N/A",
+  "beneficiary_name": "Genos Bank Treasury",
+  "beneficiary_account_ref": "TREASURY-1",
+  "beneficiary_id_doc_number": "N/A"
+}

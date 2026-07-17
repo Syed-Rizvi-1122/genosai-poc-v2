@@ -1,0 +1,35 @@
+{
+  "customer_type_code": "INDIVIDUAL",
+  "is_occasional_customer": false,
+  "applicant": {
+    "full_name": "Ahmed Raza Khan",
+    "mother_maiden_name": "Sajida Malik",
+    "father_spouse_name": "Tariq Raza Khan",
+    "date_of_birth": "1968-04-22",
+    "place_of_birth": "Multan",
+    "permanent_address": "House 10, Cantonment, Multan",
+    "current_mailing_address": "House 4-B, Sector F-7/2, Islamabad",
+    "identity_doc_type": "CNIC",
+    "identity_doc_number": "3630212345678",
+    "identity_doc_issue_date": "2017-09-15",
+    "identity_doc_expiry_date": "2027-09-14",
+    "contact_mobile": "+923009876543",
+    "contact_landline": "+92515556667",
+    "email": "ahmed.raza@finance.gov.pk",
+    "nationality_status": "RESIDENT",
+    "profession_source_of_income": "Public Servant / Minister",
+    "purpose_of_relationship": "Personal Savings Account",
+    "next_of_kin": "Sajida Malik (Mother)",
+    "fatca_crs_declared": true
+  },
+  "documents": [
+    {
+      "document_type": "IDENTITY_DOCUMENT",
+      "applies_to_role": "CUSTOMER",
+      "file_ref": "/docs/cnic_minister.pdf",
+      "is_attested": true,
+      "attested_by": "Oath Commissioner",
+      "verification_source": "GAZETTED_OFFICER"
+    }
+  ]
+}

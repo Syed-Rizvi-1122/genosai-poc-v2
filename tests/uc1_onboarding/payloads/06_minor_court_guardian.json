@@ -1,0 +1,52 @@
+{
+  "customer_type_code": "MINOR",
+  "is_occasional_customer": false,
+  "guardian_type": "COURT_APPOINTED",
+  "applicant": {
+    "full_name": "Zeeshan Ali (Minor)",
+    "mother_maiden_name": "Sadia Begum",
+    "father_spouse_name": "Liaquat Ali",
+    "date_of_birth": "2012-08-20",
+    "place_of_birth": "Peshawar",
+    "permanent_address": "House 11, Sector West, Peshawar",
+    "current_mailing_address": "House 11, Sector West, Peshawar",
+    "identity_doc_type": "FORM_B",
+    "identity_doc_number": "1730112345678",
+    "identity_doc_issue_date": "2020-03-01",
+    "identity_doc_expiry_date": null,
+    "contact_mobile": "",
+    "contact_landline": "",
+    "email": "",
+    "nationality_status": "RESIDENT",
+    "profession_source_of_income": "Dependent",
+    "purpose_of_relationship": "Minor Savings Account",
+    "next_of_kin": "Liaquat Ali (Father)",
+    "fatca_crs_declared": false
+  },
+  "documents": [
+    {
+      "document_type": "IDENTITY_DOCUMENT",
+      "applies_to_role": "CUSTOMER",
+      "file_ref": "/docs/minor_form_b.pdf",
+      "is_attested": true,
+      "attested_by": "Gazetted Officer",
+      "verification_source": "GAZETTED_OFFICER"
+    },
+    {
+      "document_type": "IDENTITY_DOCUMENT",
+      "applies_to_role": "GUARDIAN",
+      "file_ref": "/docs/guardian_cnic.pdf",
+      "is_attested": false,
+      "attested_by": null,
+      "verification_source": "BIOMETRIC"
+    },
+    {
+      "document_type": "COURT_GUARDIAN_ORDER",
+      "applies_to_role": null,
+      "file_ref": "/docs/court_order.pdf",
+      "is_attested": true,
+      "attested_by": "Senior Civil Judge Peshawar",
+      "verification_source": "GAZETTED_OFFICER"
+    }
+  ]
+}

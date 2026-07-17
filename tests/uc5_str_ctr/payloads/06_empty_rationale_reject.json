@@ -1,0 +1,18 @@
+{
+  "scenario": "STR Scenario 6: Analyst decision fails when empty rationale is submitted",
+  "customer_id": 106,
+  "trigger": {
+    "path": "uc5-str-manual-obs",
+    "body": {
+      "source_reference": "OBS-STAFF-16",
+      "description": "Counter observations"
+    }
+  },
+  "analyst_decide": {
+    "analyst_name": "Analyst Ahmed",
+    "analyst_role": "COMPLIANCE_ANALYST",
+    "action": "decide",
+    "decision": "CLOSE_NOT_SUSPICIOUS",
+    "rationale": ""
+  }
+}

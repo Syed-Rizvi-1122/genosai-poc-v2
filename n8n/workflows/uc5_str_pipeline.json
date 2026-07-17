@@ -1,0 +1,1950 @@
+{
+  "name": "UC5 - STR Investigation Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "uc5-str-tms-alert",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -16,
+        0
+      ],
+      "id": "bd685810-44ee-43a5-a1b9-d53ce7cde743",
+      "name": "Webhook — TMS Alert",
+      "webhookId": "e5707410-c441-4907-85bc-672f10e50108"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cae43ce9-5b83-4b7b-9420-2fc015debd9d",
+              "name": "trigger_type",
+              "value": "TMS_ALERT",
+              "type": "string"
+            },
+            {
+              "id": "dd5dbe42-fe04-48b3-9353-3f6e3b2c9905",
+              "name": "trigger_subtype",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "278eb52c-9845-4b25-a13d-cc3b61a4c65e",
+              "name": "customer_id",
+              "value": "={{ $json.body.customer_id }}",
+              "type": "string"
+            },
+            {
+              "id": "2f333720-e177-417f-b921-b52925c52f71",
+              "name": "source_reference",
+              "value": "={{ $json.body.source_reference || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "93992c41-fd7a-4784-8e7b-1451c0ba6b06",
+              "name": "description",
+              "value": "={{ $json.body.description || '' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        208,
+        0
+      ],
+      "id": "60ba847f-3f2a-4518-9de1-34c297910370",
+      "name": "Set Trigger — TMS Alert"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "uc5-str-manual-obs",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -16,
+        192
+      ],
+      "id": "96afd62e-7cd4-4e36-8d1b-ac9ba4711e19",
+      "name": "Webhook — Manual Observation",
+      "webhookId": "2a755e33-2686-4d59-b22f-41c7e15ee6a1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ccedbbdb-84b9-443c-804f-7bd5c928b5cf",
+              "name": "trigger_type",
+              "value": "MANUAL_STAFF_OBSERVATION",
+              "type": "string"
+            },
+            {
+              "id": "20a4cf6b-7925-4af9-81cc-452bd567dfd8",
+              "name": "trigger_subtype",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "80526527-862e-44cb-9896-64c53c304c62",
+              "name": "customer_id",
+              "value": "={{ $json.body.customer_id }}",
+              "type": "string"
+            },
+            {
+              "id": "1d04aeba-f93b-49c1-8715-9aea91d17d9c",
+              "name": "source_reference",
+              "value": "={{ $json.body.source_reference || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "2170de78-c8b6-4afe-b45c-099cb9f9c715",
+              "name": "description",
+              "value": "={{ $json.body.description || '' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        208,
+        192
+      ],
+      "id": "a6ce577e-61bd-4dda-881c-67171eadb9aa",
+      "name": "Set Trigger — Manual Observation"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "uc5-str-cross-uc",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -16,
+        384
+      ],
+      "id": "f7bfa818-59fe-4700-8c06-edcda6b925fd",
+      "name": "Webhook — Cross-UC Finding",
+      "webhookId": "8228e467-f61b-4ffd-ae8e-7267a8f445b2"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ac977846-4a17-4270-84b4-a9da2de578fd",
+              "name": "trigger_type",
+              "value": "CROSS_UC_FINDING",
+              "type": "string"
+            },
+            {
+              "id": "8510be50-9d6b-4bbb-8348-605aed71bb0c",
+              "name": "trigger_subtype",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "681f9d97-c4ea-4e89-b68e-a4e0f0a07415",
+              "name": "customer_id",
+              "value": "={{ $json.body.customer_id }}",
+              "type": "string"
+            },
+            {
+              "id": "777c7096-ed5d-43af-b6d9-ad6dc995c46e",
+              "name": "source_reference",
+              "value": "={{ $json.body.source_reference || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "2c6bb423-5ad1-4d3a-bcc6-04c0e748ab63",
+              "name": "description",
+              "value": "={{ $json.body.description || '' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        208,
+        384
+      ],
+      "id": "1fccebd7-7736-4b03-b3a2-22d7a77fbfa0",
+      "name": "Set Trigger — Cross-UC Finding"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "uc5-str-cdd-failure",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -16,
+        576
+      ],
+      "id": "3dc920ac-b05f-4190-8375-942f32a4c2cf",
+      "name": "Webhook — CDD Failure",
+      "webhookId": "4a5c9fd5-332e-428b-8151-685c82cd4c28"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2a94245a-b2a1-4290-a76e-1806e44721c4",
+              "name": "trigger_type",
+              "value": "CDD_FAILURE_OR_TIPOFF_RISK",
+              "type": "string"
+            },
+            {
+              "id": "2f7879b9-f492-4002-a5e8-e3b0e070e852",
+              "name": "trigger_subtype",
+              "value": "={{ $json.body.trigger_subtype }}",
+              "type": "string"
+            },
+            {
+              "id": "cbf7d371-9d34-4aa8-9228-165352714e29",
+              "name": "customer_id",
+              "value": "={{ $json.body.customer_id }}",
+              "type": "string"
+            },
+            {
+              "id": "efbe9872-6105-4fca-9411-fd26a024b9b6",
+              "name": "source_reference",
+              "value": "={{ $json.body.source_reference || '' }}",
+              "type": "string"
+            },
+            {
+              "id": "530f8173-76b8-4e4f-81e7-6b8973d6536f",
+              "name": "description",
+              "value": "={{ $json.body.description || '' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        208,
+        576
+      ],
+      "id": "0d479408-7cfe-4766-87de-48e25fe2257b",
+      "name": "Set Trigger — CDD Failure"
+    },
+    {
+      "parameters": {
+        "numberInputs": 4
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        432,
+        256
+      ],
+      "id": "f3e8a114-52b5-4dc1-9458-dd5f46bf3830",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO str_case_triggers (trigger_type, trigger_subtype, source_reference, customer_id, details)\nVALUES (\n  '{{ $json.trigger_type }}',\n  {{ $json.trigger_subtype ? \"'\" + $json.trigger_subtype + \"'\" : 'NULL' }},\n  '{{ $json.source_reference }}',\n  {{ $json.customer_id }},\n  '{{ JSON.stringify({ description: $json.description }) }}'::jsonb\n)\nRETURNING id, trigger_type, trigger_subtype, customer_id, triggered_at;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        656,
+        288
+      ],
+      "id": "63954e9e-a929-4e8b-bbd4-0238bddfcb73",
+      "name": "Insert STR Case Trigger",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Generate a unique case reference: STR-YYYYMMDD-NNNN\nconst triggerId = $json.id;\nconst now = new Date();\nconst datePart = now.toISOString().slice(0,10).replace(/-/g,'');\nconst caseRef = `STR-${datePart}-${String(triggerId).padStart(4, '0')}`;\n\n// Determine initial review_status based on trigger subtype\n// Per PRD: if CDD_WOULD_TIPOFF_S7D2, suspicion is already legally established\n// → skip to RECOMMENDED_FOR_FILING\nconst triggerSubtype = $json.trigger_subtype;\nconst initialStatus = (triggerSubtype === 'CDD_WOULD_TIPOFF_S7D2')\n  ? 'RECOMMENDED_FOR_FILING'\n  : 'PENDING_FIRST_REVIEW';\n\nreturn {\n  json: {\n    trigger_id: triggerId,\n    case_ref: caseRef,\n    customer_id: $json.customer_id,\n    trigger_type: $json.trigger_type,\n    trigger_subtype: triggerSubtype,\n    initial_status: initialStatus\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        880,
+        288
+      ],
+      "id": "06756601-3e73-418b-8853-3e948ac631d5",
+      "name": "Generate Case Ref"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO str_cases (trigger_id, case_ref, customer_id, review_status, is_confidential)\nVALUES (\n  {{ $json.trigger_id }},\n  '{{ $json.case_ref }}',\n  {{ $json.customer_id }},\n  '{{ $json.initial_status }}',\n  TRUE\n)\nRETURNING id, case_ref, customer_id, review_status, is_confidential, opened_at;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1104,
+        288
+      ],
+      "id": "1bc81ecb-494d-4c06-8274-14ab0295c9ec",
+      "name": "Insert STR Case",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  c.id AS customer_id,\n  c.full_name,\n  c.date_of_birth,\n  c.nationality_status,\n  COALESCE(\n    (SELECT json_agg(sub) FROM (\n      SELECT t.id, t.transaction_type, t.amount, t.currency, t.executed_at\n      FROM transactions t\n      WHERE t.customer_id = c.id\n      ORDER BY t.executed_at DESC\n      LIMIT 10\n    ) sub),\n    '[]'::json\n  ) AS recent_transactions,\n  (SELECT COUNT(*) FROM transactions t WHERE t.customer_id = c.id) AS total_transactions,\n  (SELECT COALESCE(SUM(t.amount), 0) FROM transactions t WHERE t.customer_id = c.id AND t.executed_at > now() - interval '30 days') AS last_30d_volume\nFROM customers c\nWHERE c.id = {{ $('Insert STR Case').first().json.customer_id }};",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1328,
+        288
+      ],
+      "id": "76188ba8-0c97-4836-80ea-a60779fd3e6a",
+      "name": "Aggregate Customer Profile",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Triage severity scoring rubric (POC — simple rule-based)\n// This score is for QUEUE ORDERING ONLY — never for auto-deciding outcomes.\n//\n// Rubric:\n//   +30 if trigger is TMS_ALERT (system-detected pattern)\n//   +40 if trigger is CDD_FAILURE_OR_TIPOFF_RISK (legally significant)\n//   +20 if trigger is CROSS_UC_FINDING (multi-UC correlation)\n//   +10 if trigger is MANUAL_STAFF_OBSERVATION (subjective)\n//   +15 if last 30 days volume > PKR 5M (high activity)\n//   +10 if total transactions > 20 (frequent transactor)\n\nconst triggerType = $('Generate Case Ref').first().json.trigger_type;\nconst last30dVolume = parseFloat($json.last_30d_volume || 0);\nconst totalTx = parseInt($json.total_transactions || 0);\n\nlet score = 0;\n\n// Trigger type scoring\nswitch (triggerType) {\n  case 'CDD_FAILURE_OR_TIPOFF_RISK': score += 40; break;\n  case 'TMS_ALERT': score += 30; break;\n  case 'CROSS_UC_FINDING': score += 20; break;\n  case 'MANUAL_STAFF_OBSERVATION': score += 10; break;\n}\n\n// Activity-based scoring\nif (last30dVolume > 5000000) score += 15;\nif (totalTx > 20) score += 10;\n\nreturn {\n  json: {\n    triage_severity_score: score,\n    customer_id: $json.customer_id,\n    full_name: $json.full_name,\n    total_transactions: totalTx,\n    last_30d_volume: last30dVolume\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1552,
+        288
+      ],
+      "id": "7344ccc9-48c0-47cb-89f8-c74a8bd09233",
+      "name": "Compute Triage Score"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE str_cases\nSET triage_severity_score = {{ $json.triage_severity_score }}\nWHERE id = {{ $('Insert STR Case').first().json.id }}\nRETURNING id, case_ref, triage_severity_score;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1776,
+        288
+      ],
+      "id": "62c815bc-2e99-4670-a6e3-1d4fba8f1823",
+      "name": "Update Triage Score",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "shazanali3210@gmail.com",
+        "toEmail": "shazanali3210@gmail.com",
+        "subject": "=[UC5 STR] ⚠️ New STR Case Opened — {{ $('Insert STR Case').first().json.case_ref }}",
+        "html": "=<html>\n<head>\n  <style>\n    body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #333; background: #f4f6f9; margin: 0; padding: 40px; }\n    .card { background: #fff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); max-width: 600px; margin: 0 auto; overflow: hidden; border: 1px solid #e1e4e8; }\n    .header { background: linear-gradient(135deg, #d32f2f 0%, #b71c1c 100%); color: #fff; padding: 30px; text-align: center; }\n    .header h1 { margin: 0; font-size: 22px; font-weight: 600; }\n    .header p { margin: 5px 0 0; opacity: 0.8; font-size: 13px; }\n    .content { padding: 30px; }\n    .badge { display: inline-block; padding: 6px 12px; font-size: 12px; font-weight: 700; border-radius: 20px; text-transform: uppercase; margin-bottom: 20px; background: #ffebee; color: #c62828; }\n    .section-title { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #718096; border-bottom: 1px solid #edf2f7; padding-bottom: 8px; margin-top: 25px; margin-bottom: 15px; }\n    table { width: 100%; border-collapse: collapse; }\n    td { padding: 8px 0; font-size: 14px; }\n    td:first-child { color: #718096; width: 40%; }\n    td:last-child { font-weight: 600; }\n    .footer { background: #f8f9fa; padding: 20px 30px; text-align: center; font-size: 12px; color: #718096; }\n    .warning { background: #fff3cd; border: 1px solid #ffc107; border-radius: 8px; padding: 12px; margin-top: 15px; font-size: 13px; color: #856404; }\n  </style>\n</head>\n<body>\n  <div class=\"card\">\n    <div class=\"header\">\n      <h1>🔍 New STR Case Opened</h1>\n      <p>UC5 — Suspicious Transaction Report Pipeline</p>\n    </div>\n    <div class=\"content\">\n      <span class=\"badge\">CONFIDENTIAL — COMPLIANCE USE ONLY</span>\n      <div class=\"section-title\">Case Details</div>\n      <table>\n        <tr><td>Case Ref</td><td>{{$('Insert STR Case').first().json.case_ref}}</td></tr>\n        <tr><td>Status</td><td>{{$('Insert STR Case').first().json.review_status}}</td></tr>\n        <tr><td>Trigger Type</td><td>{{$('Generate Case Ref').first().json.trigger_type}}</td></tr>\n        <tr><td>Triage Score</td><td>{{$json.triage_severity_score}}</td></tr>\n      </table>\n      <div class=\"section-title\">Customer</div>\n      <table>\n        <tr><td>Name</td><td>{{$('Compute Triage Score').first().json.full_name}}</td></tr>\n        <tr><td>Customer ID</td><td>{{$('Insert STR Case').first().json.customer_id}}</td></tr>\n      </table>\n      <div class=\"warning\">\n        ⚠️ <strong>Reg 13 §4(d) Reminder:</strong> Do NOT disclose to the customer or any front-line staff that this case exists. Tipping-off is a criminal offense.\n      </div>\n      <div class=\"section-title\">Next Step</div>\n      <p style=\"font-size:14px;\">Compliance analyst must review this case via <code>POST /webhook/uc5-str-analyst-action</code>.</p>\n    </div>\n    <div class=\"footer\">\n      GenosAI AML Compliance Automation • SBP Regulation 7 / Reg 13 §4(d)\n    </div>\n  </div>\n</body>\n</html>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        2000,
+        288
+      ],
+      "id": "f166eee5-881b-4474-a7dc-ef934865603a",
+      "name": "Send Email — New STR Case",
+      "webhookId": "a7bc4a6a-d5b1-4e24-aefa-df320b7dc81e",
+      "credentials": {
+        "smtp": {
+          "id": "8Rb60oaV0VVNTtzH",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"STR_CASE_CREATED\", \"case_id\": $('Insert STR Case').first().json.id, \"case_ref\": $('Insert STR Case').first().json.case_ref, \"review_status\": $('Insert STR Case').first().json.review_status, \"triage_severity_score\": $('Update Triage Score').first().json.triage_severity_score, \"trigger_type\": $('Generate Case Ref').first().json.trigger_type, \"trigger_subtype\": $('Generate Case Ref').first().json.trigger_subtype || null, \"customer_id\": $('Insert STR Case').first().json.customer_id, \"is_confidential\": true, \"message\": \"STR case opened. Analyst must review via POST /webhook/uc5-str-analyst-action.\" } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2224,
+        288
+      ],
+      "id": "659952a7-2609-4fa3-9c3b-b059f99b691e",
+      "name": "Respond: Case Created"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "uc5-str-analyst-action",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -16,
+        1088
+      ],
+      "id": "7b5329bd-adbe-4fda-9b1f-86dbd17b437d",
+      "name": "Webhook — Analyst Action",
+      "webhookId": "8f2a2702-8de1-4e8b-8c61-c11ef0b6fed0"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const role = $json.body.analyst_role;\nconst validRoles = ['COMPLIANCE_ANALYST'];\n\nif (!validRoles.includes(role)) {\n  return {\n    json: {\n      is_valid_role: false,\n      error: 'ACCESS_DENIED',\n      message: 'Only COMPLIANCE_ANALYST role can perform analyst actions. Per Reg 13 §4(d), front-line staff must not access STR case data.'\n    }\n  };\n}\n\nreturn {\n  json: {\n    is_valid_role: true,\n    ...($json.body)\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        1088
+      ],
+      "id": "907455c9-24a9-4efd-984f-e3d03f4320f2",
+      "name": "Validate Analyst Role"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "4c1355b7-8f07-407a-a844-2052d370ddcd",
+              "leftValue": "={{ $json.is_valid_role }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        432,
+        1088
+      ],
+      "id": "3e3bb6fb-34e8-4d34-8393-4986e6c10ff4",
+      "name": "IF: Valid Role?"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"ACCESS_DENIED\", \"message\": $json.message, \"regulation\": \"Reg 13 §4(d) — Tipping-off prohibition\" } }}",
+        "options": {
+          "responseCode": 403
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        656,
+        1184
+      ],
+      "id": "8d035c7b-05af-4ec9-89d7-6272fd475539",
+      "name": "Respond: Access Denied"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO str_access_log (str_case_id, accessed_by, accessed_by_role, access_type)\nVALUES (\n  {{ $json.str_case_id }},\n  '{{ $json.analyst_name }}',\n  '{{ $json.analyst_role }}',\n  '{{ $json.action === \"investigate\" ? \"INVESTIGATE\" : \"DECIDE\" }}'\n)\nRETURNING id;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        656,
+        992
+      ],
+      "id": "4c31b736-26e2-4553-af56-c0761e907b99",
+      "name": "Log Access — Analyst",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "a82b0235-8caf-41e9-b579-1b41a0342b03",
+              "leftValue": "={{ $('Validate Analyst Role').first().json.action }}",
+              "rightValue": "investigate",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        880,
+        992
+      ],
+      "id": "4f142ceb-47c5-4c3f-ac66-b2de0cc3c6bb",
+      "name": "IF: Action = Investigate?"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO str_investigation_log (\n  str_case_id,\n  analyst_name,\n  transaction_history_reviewed,\n  background_purpose_findings,\n  narrative_draft,\n  narrative_edited_by_human\n) VALUES (\n  {{ $('Validate Analyst Role').first().json.str_case_id }},\n  '{{ $('Validate Analyst Role').first().json.analyst_name }}',\n  '{{ JSON.stringify($('Validate Analyst Role').first().json.transaction_history_reviewed || []) }}'::jsonb,\n  '{{ $('Validate Analyst Role').first().json.background_purpose_findings || '' }}',\n  '{{ $('Validate Analyst Role').first().json.narrative_draft || '' }}',\n  {{ $('Validate Analyst Role').first().json.narrative_edited_by_human || false }}\n)\nRETURNING id, str_case_id, analyst_name, logged_at;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1104,
+        800
+      ],
+      "id": "68ac865a-530e-496e-aec9-544a37c10fd3",
+      "name": "Insert Investigation Log",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE str_cases\nSET review_status = 'UNDER_INVESTIGATION'\nWHERE id = {{ $('Validate Analyst Role').first().json.str_case_id }}\n  AND review_status IN ('PENDING_FIRST_REVIEW', 'NEEDS_MORE_INFO', 'UNDER_INVESTIGATION')\nRETURNING id, case_ref, review_status;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1328,
+        800
+      ],
+      "id": "cfa0a208-ec4c-49e9-8a31-5015463b4bac",
+      "name": "Update Case — Under Investigation",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"INVESTIGATION_LOGGED\", \"investigation_id\": $('Insert Investigation Log').first().json.id, \"str_case_id\": $('Insert Investigation Log').first().json.str_case_id, \"case_ref\": $('Update Case — Under Investigation').first().json.case_ref, \"review_status\": \"UNDER_INVESTIGATION\", \"message\": \"Investigation findings recorded. Submit decision via action: 'decide'.\" } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1552,
+        800
+      ],
+      "id": "87c8a943-3eb8-425f-99b5-cb0f55ab972e",
+      "name": "Respond: Investigation Logged"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO str_analyst_decisions (str_case_id, decision, rationale, decided_by)\nVALUES (\n  {{ $('Validate Analyst Role').first().json.str_case_id }},\n  '{{ $('Validate Analyst Role').first().json.decision }}',\n  '{{ $('Validate Analyst Role').first().json.rationale }}',\n  '{{ $('Validate Analyst Role').first().json.analyst_name }}'\n)\nRETURNING id, str_case_id, decision, rationale, decided_by, decided_at;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1328,
+        992
+      ],
+      "id": "da1b4cdd-a7c2-45a2-9cb7-04357cb5277a",
+      "name": "Insert Analyst Decision",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "5c59c5e7-f407-487f-a69e-23cc80fd3c5b",
+              "leftValue": "={{ $json.decision }}",
+              "rightValue": "CLOSE_NOT_SUSPICIOUS",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1552,
+        992
+      ],
+      "id": "afcae663-1c82-4a7a-b604-f74de62fdc7a",
+      "name": "IF: Close Not Suspicious?"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE str_cases\nSET review_status = 'CLOSED_NOT_SUSPICIOUS',\n    closed_at = now()\nWHERE id = {{ $('Insert Analyst Decision').first().json.str_case_id }}\nRETURNING id, case_ref, review_status, closed_at;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1776,
+        800
+      ],
+      "id": "ed0aa820-8653-4610-ad5d-eb9577e25e9c",
+      "name": "Update Case — Closed",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"CLOSED_NOT_SUSPICIOUS\", \"str_case_id\": $json.id, \"case_ref\": $json.case_ref, \"closed_at\": $json.closed_at, \"decision_by\": $('Insert Analyst Decision').first().json.decided_by, \"rationale\": $('Insert Analyst Decision').first().json.rationale, \"message\": \"Case closed by analyst decision. Logged with rationale for audit.\" } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2000,
+        800
+      ],
+      "id": "dde274e2-1adb-4e16-a189-7a151fe12722",
+      "name": "Respond: Case Closed"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "6dda69b9-9077-4a94-b2cc-8de978b0eb05",
+              "leftValue": "={{ $('Insert Analyst Decision').first().json.decision }}",
+              "rightValue": "NEEDS_MORE_INFO",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1776,
+        1088
+      ],
+      "id": "f43b9f0c-7655-410e-b3a6-79f33050db19",
+      "name": "IF: Needs More Info?"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE str_cases\nSET review_status = 'NEEDS_MORE_INFO'\nWHERE id = {{ $('Insert Analyst Decision').first().json.str_case_id }}\nRETURNING id, case_ref, review_status;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2000,
+        992
+      ],
+      "id": "fe09c53e-0a4b-45eb-ab71-3b59dd10bf13",
+      "name": "Update Case — Needs More Info",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"NEEDS_MORE_INFO\", \"str_case_id\": $json.id, \"case_ref\": $json.case_ref, \"message\": \"Case requires additional information. Analyst can resubmit investigation findings via action: 'investigate'.\" } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2224,
+        992
+      ],
+      "id": "8f258332-ccac-400c-b10d-04ed72151f22",
+      "name": "Respond: Needs More Info"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE str_cases\nSET review_status = 'RECOMMENDED_FOR_FILING'\nWHERE id = {{ $('Insert Analyst Decision').first().json.str_case_id }}\nRETURNING id, case_ref, review_status;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2000,
+        1184
+      ],
+      "id": "20558b8a-6703-4908-b446-ddd3bed61293",
+      "name": "Update Case — Recommended for Filing",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"RECOMMENDED_FOR_FILING\", \"str_case_id\": $json.id, \"case_ref\": $json.case_ref, \"decision_by\": $('Insert Analyst Decision').first().json.decided_by, \"rationale\": $('Insert Analyst Decision').first().json.rationale, \"message\": \"Case recommended for STR filing. Compliance officer must sign off via POST /webhook/uc5-str-officer-signoff.\" } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2224,
+        1184
+      ],
+      "id": "a806e4a8-653b-466f-abe9-62bf1aaf5bb2",
+      "name": "Respond: Recommended for Filing"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "uc5-str-officer-signoff",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -16,
+        1696
+      ],
+      "id": "9ec4e67d-659c-4355-922c-81f6656e2849",
+      "name": "Webhook — Officer Sign-Off",
+      "webhookId": "d07dd22e-5886-4305-b265-69c897f8452d"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const role = $json.body.officer_role;\nconst validRoles = ['COMPLIANCE_OFFICER'];\n\nif (!validRoles.includes(role)) {\n  return {\n    json: {\n      is_valid_role: false,\n      error: 'ACCESS_DENIED',\n      message: 'Only COMPLIANCE_OFFICER role can sign off on STR filings.'\n    }\n  };\n}\n\nreturn {\n  json: {\n    is_valid_role: true,\n    ...($json.body)\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        1696
+      ],
+      "id": "d479ad1c-59e6-4a21-a272-66ec5831bb84",
+      "name": "Validate Officer Role"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "d084a665-8e2e-4419-86a1-b53745250cb1",
+              "leftValue": "={{ $json.is_valid_role }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        432,
+        1696
+      ],
+      "id": "3b72bdd1-f86e-4bd3-bad2-3998e3744389",
+      "name": "IF: Valid Officer Role?"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"ACCESS_DENIED\", \"message\": $json.message } }}\n",
+        "options": {
+          "responseCode": 403
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        656,
+        1792
+      ],
+      "id": "94546720-b319-4a07-89c0-7c1f2ccce0e1",
+      "name": "Respond: Officer Access Denied"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO str_access_log (str_case_id, accessed_by, accessed_by_role, access_type)\nVALUES (\n  {{ $json.str_case_id }},\n  '{{ $json.officer_name }}',\n  '{{ $json.officer_role }}',\n  'SIGNOFF'\n)\nRETURNING id;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        656,
+        1600
+      ],
+      "id": "dd7e79a3-c32d-4741-b2d4-de68e53de0bf",
+      "name": "Log Access — Officer",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT id, case_ref, review_status, customer_id\nFROM str_cases\nWHERE id = {{ $('Validate Officer Role').first().json.str_case_id }}\n  AND review_status = 'RECOMMENDED_FOR_FILING';",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        880,
+        1600
+      ],
+      "id": "7b63955d-73f0-4fb4-bf86-8f849600be29",
+      "name": "Validate Case Status",
+      "alwaysOutputData": true,
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "117c6a44-bb33-4c47-8377-c38c10ba7bfd",
+              "leftValue": "={{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1104,
+        1600
+      ],
+      "id": "4b4a28f1-49c2-4daa-b7cf-12702ba8f984",
+      "name": "IF: Case Ready?"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"CASE_NOT_READY\", \"str_case_id\": $('Validate Officer Role').first().json.str_case_id, \"message\": \"Case is not in RECOMMENDED_FOR_FILING status. Cannot proceed with sign-off.\" } }}",
+        "options": {
+          "responseCode": 422
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1328,
+        1696
+      ],
+      "id": "abfe11c5-da43-40f4-8b6e-20cb6f882f91",
+      "name": "Respond: Case Not Ready"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO str_compliance_officer_signoff (str_case_id, decision, officer_name, comments)\nVALUES (\n  {{ $('Validate Officer Role').first().json.str_case_id }},\n  '{{ $('Validate Officer Role').first().json.decision }}',\n  '{{ $('Validate Officer Role').first().json.officer_name }}',\n  '{{ $('Validate Officer Role').first().json.comments || '' }}'\n)\nRETURNING id, str_case_id, decision, officer_name, decided_at;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1328,
+        1504
+      ],
+      "id": "b2d54312-0f1f-442c-89a0-43ec2dc4ce13",
+      "name": "Insert Officer Sign-Off",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "2fb9cdf4-a8aa-49b6-bb35-81bed5ed0b3a",
+              "leftValue": "={{ $json.decision }}",
+              "rightValue": "APPROVED",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1552,
+        1504
+      ],
+      "id": "11a38390-11f9-49dc-a0fd-43debff8818a",
+      "name": "IF: Officer Approved?"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE str_cases\nSET review_status = 'UNDER_INVESTIGATION'\nWHERE id = {{ $('Insert Officer Sign-Off').first().json.str_case_id }}\nRETURNING id, case_ref, review_status;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1776,
+        1408
+      ],
+      "id": "9075a78e-e399-42f2-af05-f2c98a2518b5",
+      "name": "Update Case — Returned",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"RETURNED_FOR_REVISION\", \"str_case_id\": $json.id, \"case_ref\": $json.case_ref, \"review_status\": \"UNDER_INVESTIGATION\", \"officer_comments\": $('Insert Officer Sign-Off').first().json.comments || '', \"message\": \"Case returned to analyst for revision. Officer comments attached.\" } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2000,
+        1408
+      ],
+      "id": "ab99297b-10e0-40af-a230-b8bce8954a21",
+      "name": "Respond: Returned for Revision"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT\n  GREATEST(\n    COALESCE((SELECT MAX(t.executed_at) FROM transactions t WHERE t.customer_id = sc.customer_id), now()),\n    now()\n  )::date + interval '10 years' AS retention_until,\n  sc.case_ref,\n  sc.customer_id\nFROM str_cases sc\nWHERE sc.id = {{ $('Insert Officer Sign-Off').first().json.str_case_id }};",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1776,
+        1600
+      ],
+      "id": "9a768f0a-8e04-4f56-a508-a7f537678c35",
+      "name": "Get Retention Date",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO str_filings (str_case_id, filing_reference, retention_until)\nVALUES (\n  {{ $('Insert Officer Sign-Off').first().json.str_case_id }},\n  'FMU-STR-' || to_char(now(), 'YYYYMMDD-HH24MISS') || '-' || {{ $('Insert Officer Sign-Off').first().json.str_case_id }},\n  '{{ $json.retention_until }}'::date\n)\nRETURNING id, str_case_id, filing_reference, filed_at, retention_until;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2000,
+        1600
+      ],
+      "id": "9172bd0a-0e88-405c-b858-d96f18e88ed5",
+      "name": "Insert STR Filing",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE str_cases\nSET review_status = 'FILED',\n    closed_at = now()\nWHERE id = {{ $('Insert Officer Sign-Off').first().json.str_case_id }}\nRETURNING id, case_ref, review_status, closed_at;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2224,
+        1600
+      ],
+      "id": "a53a27aa-4035-4b2f-8298-09d48c79d20b",
+      "name": "Update Case — Filed",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "shazanali3210@gmail.com",
+        "toEmail": "shazanali3210@gmail.com",
+        "subject": "=[UC5 STR] ✅ STR Filed — {{ $('Insert STR Filing').first().json.filing_reference }}",
+        "html": "=<html>\n<head>\n  <style>\n    body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #333; background: #f4f6f9; margin: 0; padding: 40px; }\n    .card { background: #fff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); max-width: 600px; margin: 0 auto; overflow: hidden; border: 1px solid #e1e4e8; }\n    .header { background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%); color: #fff; padding: 30px; text-align: center; }\n    .header h1 { margin: 0; font-size: 22px; font-weight: 600; }\n    .header p { margin: 5px 0 0; opacity: 0.8; font-size: 13px; }\n    .content { padding: 30px; }\n    .badge { display: inline-block; padding: 6px 12px; font-size: 12px; font-weight: 700; border-radius: 20px; text-transform: uppercase; margin-bottom: 20px; background: #e8f5e9; color: #2e7d32; }\n    .section-title { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #718096; border-bottom: 1px solid #edf2f7; padding-bottom: 8px; margin-top: 25px; margin-bottom: 15px; }\n    table { width: 100%; border-collapse: collapse; }\n    td { padding: 8px 0; font-size: 14px; }\n    td:first-child { color: #718096; width: 40%; }\n    td:last-child { font-weight: 600; }\n    .footer { background: #f8f9fa; padding: 20px 30px; text-align: center; font-size: 12px; color: #718096; }\n  </style>\n</head>\n<body>\n  <div class=\"card\">\n    <div class=\"header\">\n      <h1>✅ STR Filed Successfully</h1>\n      <p>UC5 — Suspicious Transaction Report Pipeline</p>\n    </div>\n    <div class=\"content\">\n      <span class=\"badge\">CONFIDENTIAL — FILED WITH FMU</span>\n      <div class=\"section-title\">Filing Details</div>\n      <table>\n        <tr><td>Filing Reference</td><td>{{$('Insert STR Filing').first().json.filing_reference}}</td></tr>\n        <tr><td>Case Ref</td><td>{{$('Update Case — Filed').first().json.case_ref}}</td></tr>\n        <tr><td>Filed At</td><td>{{$('Insert STR Filing').first().json.filed_at}}</td></tr>\n        <tr><td>Retention Until</td><td>{{$('Insert STR Filing').first().json.retention_until}}</td></tr>\n      </table>\n      <div class=\"section-title\">Approval Chain</div>\n      <table>\n        <tr><td>Signed Off By</td><td>{{$('Insert Officer Sign-Off').first().json.officer_name}}</td></tr>\n        <tr><td>Decision</td><td style=\"color: #2e7d32;\">APPROVED</td></tr>\n      </table>\n      <div class=\"section-title\">Regulatory Basis</div>\n      <p style=\"font-size:14px;\">Filed under AML Act 2010 §7 — SBP Regulation 7. Records retained for 10 years per Reg 8 §3. Confidentiality maintained per Reg 13 §4(d).</p>\n    </div>\n    <div class=\"footer\">\n      GenosAI AML Compliance Automation • SBP Regulation 7 / Reg 13 §4(d)\n    </div>\n  </div>\n</body>\n</html>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        2448,
+        1600
+      ],
+      "id": "2898f163-295e-43f7-84a9-32708e0d5add",
+      "name": "Send Email — STR Filed",
+      "webhookId": "0f8b62dc-3c29-40f5-9db9-223644d4159e",
+      "credentials": {
+        "smtp": {
+          "id": "8Rb60oaV0VVNTtzH",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"STR_FILED\", \"filing_id\": $('Insert STR Filing').first().json.id, \"filing_reference\": $('Insert STR Filing').first().json.filing_reference, \"case_ref\": $('Update Case — Filed').first().json.case_ref, \"filed_at\": $('Insert STR Filing').first().json.filed_at, \"retention_until\": $('Insert STR Filing').first().json.retention_until, \"signed_off_by\": $('Insert Officer Sign-Off').first().json.officer_name, \"message\": \"STR filed with FMU (mock). Record retained until \" + $('Insert STR Filing').first().json.retention_until + \" per Reg 8 §3.\" } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2672,
+        1600
+      ],
+      "id": "98d54b3d-8ff6-416b-a2ef-75ff1006afaa",
+      "name": "Respond: STR Filed"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "uc5-str-access-check",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -16,
+        2112
+      ],
+      "id": "f9c848c2-ebf0-4d9e-8f83-1234f72f5d78",
+      "name": "Webhook — Access Check",
+      "webhookId": "bef4cbae-798f-407b-b156-f2a05b7f0b6f"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const role = $json.body.requester_role;\nconst allowedRoles = ['COMPLIANCE_ANALYST', 'COMPLIANCE_OFFICER'];\n\nif (!allowedRoles.includes(role)) {\n  return {\n    json: {\n      is_allowed: false,\n      requester_name: $json.body.requester_name,\n      requester_role: role,\n      str_case_id: $json.body.str_case_id,\n      message: 'ACCESS DENIED. Role \"' + role + '\" is not authorized to view STR case data. Per Reg 13 §4(d), front-line and relationship management staff must not access STR-related information.'\n    }\n  };\n}\n\nreturn {\n  json: {\n    is_allowed: true,\n    requester_name: $json.body.requester_name,\n    requester_role: role,\n    str_case_id: $json.body.str_case_id\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        2112
+      ],
+      "id": "1861a7af-a774-45d8-be6a-3dd4676146f4",
+      "name": "Check Access Role"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "dfe45525-8fa2-4fad-b090-055e9e18b1d2",
+              "leftValue": "={{ $json.is_allowed }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        432,
+        2112
+      ],
+      "id": "d403e67d-34f7-426a-a9a3-1c3178b91bde",
+      "name": "IF: Access Allowed?"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"ACCESS_DENIED\", \"requester_name\": $json.requester_name, \"requester_role\": $json.requester_role, \"regulation\": \"Reg 13 §4(d) — Employees shall be strictly prohibited from disclosing STR information.\", \"message\": $json.message } }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        656,
+        2208
+      ],
+      "id": "dc510b76-5e91-4bc0-806e-43d512ffb78d",
+      "name": "Respond: Access Denied (Tipping-Off)"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "-- Log the access\nINSERT INTO str_access_log (str_case_id, accessed_by, accessed_by_role, access_type)\nVALUES ({{ $json.str_case_id }}, '{{ $json.requester_name }}', '{{ $json.requester_role }}', 'VIEW');\n\n-- Return the case data (only for confidential-authorized roles)\nSELECT\n  sc.id, sc.case_ref, sc.review_status, sc.triage_severity_score,\n  sc.is_confidential, sc.opened_at, sc.closed_at,\n  c.full_name AS customer_name\nFROM str_cases sc\nJOIN customers c ON sc.customer_id = c.id\nWHERE sc.id = {{ $json.str_case_id }};",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        656,
+        2016
+      ],
+      "id": "b3b0a0ce-508c-4a00-9fdd-77b225fedb19",
+      "name": "Log + Return Case Data",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"ACCESS_GRANTED\", \"case_data\": $json } }}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        880,
+        2016
+      ],
+      "id": "5bedd4b0-98a2-444b-90fc-0b9c9cebe68d",
+      "name": "Respond: Case Data"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "344a3e69-014b-4981-a225-2a4ac1180d4a",
+              "leftValue": "={{ $('Validate Analyst Role').first().json.rationale }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1104,
+        1088
+      ],
+      "id": "f99e442c-e4f6-43f3-8c57-ff2b8c9fe9e2",
+      "name": "IF: Rationale Provided?"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"status\": \"VALIDATION_FAILED\", \"error\": \"RATIONALE_REQUIRED\", \"message\": \"Under SBP AML/CFT Regulation 7 & Reg 2 §21(e), a detailed non-empty compliance rationale is mandatory for recording any STR decisions (file or close).\", \"regulation_reference\": \"Regulation 7 & Reg 2 §21(e)\" } }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1328,
+        1184
+      ],
+      "id": "78bdb18b-6217-4ab4-8755-1d6b4252bf7a",
+      "name": "Respond to Webhook"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook — TMS Alert": {
+      "main": [
+        [
+          {
+            "node": "Set Trigger — TMS Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook — Manual Observation": {
+      "main": [
+        [
+          {
+            "node": "Set Trigger — Manual Observation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook — Cross-UC Finding": {
+      "main": [
+        [
+          {
+            "node": "Set Trigger — Cross-UC Finding",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook — CDD Failure": {
+      "main": [
+        [
+          {
+            "node": "Set Trigger — CDD Failure",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Trigger — TMS Alert": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Trigger — Manual Observation": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Set Trigger — Cross-UC Finding": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Set Trigger — CDD Failure": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Insert STR Case Trigger",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert STR Case Trigger": {
+      "main": [
+        [
+          {
+            "node": "Generate Case Ref",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Case Ref": {
+      "main": [
+        [
+          {
+            "node": "Insert STR Case",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert STR Case": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Customer Profile",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Customer Profile": {
+      "main": [
+        [
+          {
+            "node": "Compute Triage Score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compute Triage Score": {
+      "main": [
+        [
+          {
+            "node": "Update Triage Score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Triage Score": {
+      "main": [
+        [
+          {
+            "node": "Send Email — New STR Case",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email — New STR Case": {
+      "main": [
+        [
+          {
+            "node": "Respond: Case Created",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook — Analyst Action": {
+      "main": [
+        [
+          {
+            "node": "Validate Analyst Role",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Analyst Role": {
+      "main": [
+        [
+          {
+            "node": "IF: Valid Role?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Valid Role?": {
+      "main": [
+        [
+          {
+            "node": "Log Access — Analyst",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond: Access Denied",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Access — Analyst": {
+      "main": [
+        [
+          {
+            "node": "IF: Action = Investigate?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Action = Investigate?": {
+      "main": [
+        [
+          {
+            "node": "Insert Investigation Log",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "IF: Rationale Provided?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Investigation Log": {
+      "main": [
+        [
+          {
+            "node": "Update Case — Under Investigation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Case — Under Investigation": {
+      "main": [
+        [
+          {
+            "node": "Respond: Investigation Logged",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Analyst Decision": {
+      "main": [
+        [
+          {
+            "node": "IF: Close Not Suspicious?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Close Not Suspicious?": {
+      "main": [
+        [
+          {
+            "node": "Update Case — Closed",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "IF: Needs More Info?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Case — Closed": {
+      "main": [
+        [
+          {
+            "node": "Respond: Case Closed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Needs More Info?": {
+      "main": [
+        [
+          {
+            "node": "Update Case — Needs More Info",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update Case — Recommended for Filing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Case — Needs More Info": {
+      "main": [
+        [
+          {
+            "node": "Respond: Needs More Info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Case — Recommended for Filing": {
+      "main": [
+        [
+          {
+            "node": "Respond: Recommended for Filing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook — Officer Sign-Off": {
+      "main": [
+        [
+          {
+            "node": "Validate Officer Role",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Officer Role": {
+      "main": [
+        [
+          {
+            "node": "IF: Valid Officer Role?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Valid Officer Role?": {
+      "main": [
+        [
+          {
+            "node": "Log Access — Officer",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond: Officer Access Denied",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Access — Officer": {
+      "main": [
+        [
+          {
+            "node": "Validate Case Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Case Status": {
+      "main": [
+        [
+          {
+            "node": "IF: Case Ready?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Case Ready?": {
+      "main": [
+        [
+          {
+            "node": "Insert Officer Sign-Off",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond: Case Not Ready",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Officer Sign-Off": {
+      "main": [
+        [
+          {
+            "node": "IF: Officer Approved?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Officer Approved?": {
+      "main": [
+        [
+          {
+            "node": "Get Retention Date",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update Case — Returned",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Case — Returned": {
+      "main": [
+        [
+          {
+            "node": "Respond: Returned for Revision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Retention Date": {
+      "main": [
+        [
+          {
+            "node": "Insert STR Filing",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert STR Filing": {
+      "main": [
+        [
+          {
+            "node": "Update Case — Filed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Case — Filed": {
+      "main": [
+        [
+          {
+            "node": "Send Email — STR Filed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Email — STR Filed": {
+      "main": [
+        [
+          {
+            "node": "Respond: STR Filed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook — Access Check": {
+      "main": [
+        [
+          {
+            "node": "Check Access Role",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Access Role": {
+      "main": [
+        [
+          {
+            "node": "IF: Access Allowed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Access Allowed?": {
+      "main": [
+        [
+          {
+            "node": "Log + Return Case Data",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond: Access Denied (Tipping-Off)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log + Return Case Data": {
+      "main": [
+        [
+          {
+            "node": "Respond: Case Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Rationale Provided?": {
+      "main": [
+        [
+          {
+            "node": "Insert Analyst Decision",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "0f4f3c4b-6adf-455c-a021-cc2b14956732",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "eeda824893ce98822b0b4043b43e928e49b7621bae4482aa410a3b9883ce47cf"
+  },
+  "nodeGroups": [],
+  "id": "6AD20uS4p2UK8xfU",
+  "tags": []
+}

@@ -1,0 +1,97 @@
+{
+  "customer_type_code": "COMPANY",
+  "is_occasional_customer": false,
+  "applicant": {
+    "full_name": "Apex Holdings Private Limited",
+    "mother_maiden_name": "",
+    "father_spouse_name": "",
+    "date_of_birth": null,
+    "place_of_birth": "",
+    "permanent_address": "Plot 102, Sector I-9, Industrial Area, Islamabad",
+    "current_mailing_address": "Plot 102, Sector I-9, Industrial Area, Islamabad",
+    "identity_doc_type": "CNIC",
+    "identity_doc_number": "3740512345678",
+    "identity_doc_issue_date": "2018-06-12",
+    "identity_doc_expiry_date": "2028-06-11",
+    "contact_mobile": "+923219876543",
+    "contact_landline": "+92514445556",
+    "email": "info@apexholdings.com",
+    "nationality_status": "RESIDENT",
+    "profession_source_of_income": "Manufacturing & Real Estate Services",
+    "purpose_of_relationship": "Business Operations Account",
+    "next_of_kin": "",
+    "fatca_crs_declared": true
+  },
+  "beneficial_owners": [
+    {
+      "full_name": "Zubair Ahmed Malik",
+      "ownership_percentage": 10.00,
+      "has_control": false
+    },
+    {
+      "full_name": "Kamran Bashir",
+      "ownership_percentage": 15.00,
+      "has_control": false
+    },
+    {
+      "full_name": "Yasmin Tariq",
+      "ownership_percentage": 20.00,
+      "has_control": false
+    }
+  ],
+  "senior_managing_official": {
+    "full_name": "Sikandar Hayat",
+    "ownership_percentage": 0.00,
+    "role": "SENIOR_OFFICIAL"
+  },
+  "documents": [
+    {
+      "document_type": "IDENTITY_DOCUMENT",
+      "applies_to_role": "ALL_DIRECTORS",
+      "file_ref": "/docs/director_cnic.pdf",
+      "is_attested": true,
+      "attested_by": "Gazetted Officer Grade 17",
+      "verification_source": "GAZETTED_OFFICER"
+    },
+    {
+      "document_type": "IDENTITY_DOCUMENT",
+      "applies_to_role": "AUTHORIZED_SIGNATORIES",
+      "file_ref": "/docs/auth_cnic.pdf",
+      "is_attested": false,
+      "attested_by": null,
+      "verification_source": "BIOMETRIC"
+    },
+    {
+      "document_type": "BOARD_RESOLUTION",
+      "applies_to_role": null,
+      "file_ref": "/docs/board_resolution.pdf",
+      "is_attested": true,
+      "attested_by": "Company Secretary",
+      "verification_source": "GAZETTED_OFFICER"
+    },
+    {
+      "document_type": "MEMORANDUM_ARTICLES_OF_ASSOCIATION",
+      "applies_to_role": null,
+      "file_ref": "/docs/moa_aoa.pdf",
+      "is_attested": true,
+      "attested_by": "SECP Registrar",
+      "verification_source": "GAZETTED_OFFICER"
+    },
+    {
+      "document_type": "FORM_A_OR_B",
+      "applies_to_role": null,
+      "file_ref": "/docs/form_a.pdf",
+      "is_attested": true,
+      "attested_by": "Company Secretary",
+      "verification_source": "GAZETTED_OFFICER"
+    },
+    {
+      "document_type": "INCORPORATION_FORM_II_OR_FORM_29",
+      "applies_to_role": null,
+      "file_ref": "/docs/form_29.pdf",
+      "is_attested": true,
+      "attested_by": "Company Secretary",
+      "verification_source": "GAZETTED_OFFICER"
+    }
+  ]
+}

@@ -1,0 +1,1552 @@
+{
+  "name": "Customer Onboarding & CDD",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "uc1-onboarding",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        96
+      ],
+      "id": "bcdb1a81-a403-4e18-ab34-12ef59345e6d",
+      "name": "Webhook Trigger",
+      "webhookId": "021a7064-cfb5-4e99-938b-7a1532a37cf0"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  rca.is_applicable, \n  rt.code as re_code, \n  rt.name as re_name, \n  rt.allows_legal_persons, \n  ct.code as ct_code, \n  ct.name as ct_name, \n  ct.legal_category, \n  ct.requires_beneficial_owner_check, \n  ct.requires_governing_body_cdd, \n  ct.mandatory_edd, \n  ct.id as customer_type_id, \n  rt.id as re_type_id \nFROM re_customer_type_applicability rca \nJOIN re_types rt ON rca.re_type_id = rt.id \nJOIN customer_types ct ON rca.customer_type_id = ct.id \nWHERE rt.code = 'BANK' AND ct.code = '{{ $json.body.customer_type_code }}' \nLIMIT 1;\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        224,
+        96
+      ],
+      "id": "cbe602c6-1752-433d-a188-d72cb865d610",
+      "name": "RE Type Gate Lookup",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "675a531b-e5b0-49fd-88bc-95083b95302f",
+              "leftValue": "={{ $json.is_applicable }}",
+              "rightValue": "true",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        448,
+        96
+      ],
+      "id": "47602343-6676-44fa-ae04-4ba64c3f550c",
+      "name": "IF: Applicable?"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"REJECTED\",\n  \"reason\": \"Customer type not applicable for this RE type (Bank)\",\n  \"customer_type_code\": \"{{ $('Webhook Trigger').item.json.body.customer_type_code }}\"\n}\n",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        672,
+        0
+      ],
+      "id": "5fc2448e-b1fe-4088-871f-1a0f50cd96df",
+      "name": "Respond: Not Applicable"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO cdd_cases (\n  case_ref, \n  re_type_id, \n  customer_type_id, \n  is_occasional_customer, \n  suspicion_flag, \n  current_phase, \n  status\n) VALUES ( \n  'CDD-' || to_char(now(), 'YYYY') || '-' || lpad(nextval('cdd_cases_id_seq')::text, 6, '0'), \n  {{ $('RE Type Gate Lookup').item.json.re_type_id }}, \n  {{ $('RE Type Gate Lookup').item.json.customer_type_id }}, \n  {{ $('Webhook Trigger').item.json.body.is_occasional_customer || false }}, \n  {{ $('Webhook Trigger').item.json.body.suspicion_flag || false }}, \n  'DOC_COLLECTION', \n  'IN_PROGRESS' \n) RETURNING id, case_ref, suspicion_flag;\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        672,
+        192
+      ],
+      "id": "acd85e26-cc03-4de7-8a63-20c9854f2ad9",
+      "name": "Insert CDD Case",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO customers (\n  case_id, \n  role, \n  full_name, \n  mother_maiden_name, \n  father_spouse_name, \n  date_of_birth, \n  place_of_birth, \n  permanent_address, \n  current_mailing_address, \n  identity_doc_type, \n  identity_doc_number, \n  identity_doc_issue_date, \n  identity_doc_expiry_date, \n  contact_mobile, \n  contact_landline, \n  email, \n  nationality_status, \n  profession_source_of_income, \n  purpose_of_relationship, \n  next_of_kin, \n  fatca_crs_declared\n) VALUES ( \n  {{ $('Insert CDD Case').item.json.id }}, \n  'PRIMARY', \n  '{{ $('Webhook Trigger').item.json.body.applicant.full_name }}', \n  '{{ $('Webhook Trigger').item.json.body.applicant.mother_maiden_name || '' }}', \n  '{{ $('Webhook Trigger').item.json.body.applicant.father_spouse_name || '' }}', \n  {{ $('Webhook Trigger').item.json.body.applicant.date_of_birth ? \"'\" + $('Webhook Trigger').item.json.body.applicant.date_of_birth + \"'\" : 'NULL' }}, \n  '{{ $('Webhook Trigger').item.json.body.applicant.place_of_birth || '' }}', \n  '{{ $('Webhook Trigger').item.json.body.applicant.permanent_address || '' }}', \n  '{{ $('Webhook Trigger').item.json.body.applicant.current_mailing_address || '' }}', \n  '{{ $('Webhook Trigger').item.json.body.applicant.identity_doc_type }}', \n  '{{ $('Webhook Trigger').item.json.body.applicant.identity_doc_number }}', \n  {{ $('Webhook Trigger').item.json.body.applicant.identity_doc_issue_date ? \"'\" + $('Webhook Trigger').item.json.body.applicant.identity_doc_issue_date + \"'\" : 'NULL' }}, \n  {{ $('Webhook Trigger').item.json.body.applicant.identity_doc_expiry_date ? \"'\" + $('Webhook Trigger').item.json.body.applicant.identity_doc_expiry_date + \"'\" : 'NULL' }}, \n  '{{ $('Webhook Trigger').item.json.body.applicant.contact_mobile || '' }}', \n  '{{ $('Webhook Trigger').item.json.body.applicant.contact_landline || '' }}', \n  '{{ $('Webhook Trigger').item.json.body.applicant.email || '' }}', \n  '{{ $('Webhook Trigger').item.json.body.applicant.nationality_status || 'RESIDENT' }}', \n  '{{ $('Webhook Trigger').item.json.body.applicant.profession_source_of_income || '' }}', \n  '{{ $('Webhook Trigger').item.json.body.applicant.purpose_of_relationship || '' }}', \n  '{{ $('Webhook Trigger').item.json.body.applicant.next_of_kin || '' }}', \n  {{ $('Webhook Trigger').item.json.body.applicant.fatca_crs_declared || false }} \n) RETURNING id, full_name;\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        896,
+        192
+      ],
+      "id": "b032e041-e8eb-4104-ace8-8a899a0a4b47",
+      "name": "Insert Primary Customer",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  dc.document_type, \n  dc.is_mandatory, \n  dc.applies_to_role, \n  dc.is_conditional, \n  dc.condition_description, \n  dc.regulation_ref \nFROM document_checklist_config dc \nWHERE dc.customer_type_id = {{ $('RE Type Gate Lookup').item.json.customer_type_id }};\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1120,
+        192
+      ],
+      "id": "5e92acd8-e1c4-4d42-8a76-2fb760b1e358",
+      "name": "Lookup Doc Checklist",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const requiredDocs = $('Lookup Doc Checklist').all().map(item => item.json);\nconst submittedDocs = $('Webhook Trigger').first().json.body.documents || [];\nconst customerTypeCode = $('RE Type Gate Lookup').first().json.ct_code;\nconst hasCourtGuardian = $('Webhook Trigger').first().json.body.guardian_type === 'COURT_APPOINTED';\nconst hasProtector = $('Webhook Trigger').first().json.body.trust_details?.protector_name ? true : false;\n\nconst missing = [];\nconst attestationErrors = [];\nconst validDocs = [];\n\nfor (const req of requiredDocs) {\n  if (req.is_conditional) {\n    if (req.document_type === 'COURT_GUARDIAN_ORDER' && !hasCourtGuardian) continue;\n    if (req.applies_to_role === 'PROTECTOR' && !hasProtector) continue;\n  }\n  \n  const submitted = submittedDocs.find(d => d.document_type === req.document_type && \n    (!req.applies_to_role || d.applies_to_role === req.applies_to_role));\n  \n  if (!submitted && req.is_mandatory) {\n    missing.push({ document_type: req.document_type, applies_to_role: req.applies_to_role, regulation_ref: req.regulation_ref });\n  } else if (submitted) {\n    const hasAttestation = submitted.is_attested && submitted.attested_by;\n    const hasVerification = ['NADRA_VERISYS', 'BIOMETRIC'].includes(submitted.verification_source);\n    \n    if (!hasAttestation && !hasVerification) {\n      attestationErrors.push({ document_type: req.document_type, error: 'Document must be either attested (by Gazetted officer/RE officer) OR verified via NADRA Verisys/Biometric' });\n    } else {\n      validDocs.push(submitted);\n    }\n  }\n}\n\nconst isComplete = missing.length === 0 && attestationErrors.length === 0;\n\nreturn [{\n  json: {\n    is_complete: isComplete,\n    missing_documents: missing,\n    attestation_errors: attestationErrors,\n    valid_documents: validDocs,\n    case_id: $('Insert CDD Case').first().json.id,\n    case_ref: $('Insert CDD Case').first().json.case_ref,\n    suspicion_flag: $('Insert CDD Case').first().json.suspicion_flag,\n    customer_id: $('Insert Primary Customer').first().json.id,\n    customer_type_code: customerTypeCode,\n    re_type_id: $('RE Type Gate Lookup').first().json.re_type_id,\n    customer_type_id: $('RE Type Gate Lookup').first().json.customer_type_id,\n    mandatory_edd: $('RE Type Gate Lookup').first().json.mandatory_edd,\n    requires_bo_check: $('RE Type Gate Lookup').first().json.requires_beneficial_owner_check,\n    nationality_status: $('Webhook Trigger').first().json.body.applicant.nationality_status || 'RESIDENT'\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1344,
+        192
+      ],
+      "id": "deff870f-74c1-42e5-946d-77f4e756d0f7",
+      "name": "Check Documents & Attestation"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "056719b0-2bb3-4488-9f3e-b58972a11fe5",
+              "leftValue": "={{ $json.is_complete }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1568,
+        192
+      ],
+      "id": "1f1894f9-0228-4df2-b6fa-2f3c38287008",
+      "name": "IF: Docs Complete?"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE cdd_cases \nSET status = 'ON_HOLD', current_phase = 'DOC_COLLECTION' \nWHERE id = {{ $json.case_id }}; \n\nINSERT INTO audit_log (case_id, entity_type, entity_id, action, actor, details) \nVALUES (\n  {{ $json.case_id }}, \n  'cdd_cases', \n  {{ $json.case_id }}, \n  'DOCUMENTS_INCOMPLETE', \n  'SYSTEM', \n  '{{ JSON.stringify({ missing: $json.missing_documents, attestation_errors: $json.attestation_errors }) }}'::jsonb\n);",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1792,
+        288
+      ],
+      "id": "e3b1b8d5-8f8e-4d97-b9f2-71d6b592099d",
+      "name": "Case → ON_HOLD (Incomplete)",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"ON_HOLD\",\n  \"case_ref\": \"{{ $('Check Documents & Attestation').item.json.case_ref }}\",\n  \"reason\": \"Incomplete submission\",\n  \"missing_documents\": {{ JSON.stringify($('Check Documents & Attestation').item.json.missing_documents) }},\n  \"attestation_errors\": {{ JSON.stringify($('Check Documents & Attestation').item.json.attestation_errors) }}\n}\n",
+        "options": {
+          "responseCode": 422
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2016,
+        288
+      ],
+      "id": "90e060c4-599e-494f-b95c-f8e2a1c8034a",
+      "name": "Respond: Incomplete Docs"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO documents (case_id, customer_id, document_type, file_ref, is_attested, attested_by, verification_source) \nSELECT \n  {{ $json.case_id }}, \n  {{ $json.customer_id }}, \n  d->>'document_type', \n  d->>'file_ref', \n  (d->>'is_attested')::boolean, \n  d->>'attested_by', \n  d->>'verification_source' \nFROM jsonb_array_elements('{{ JSON.stringify($json.valid_documents) }}'::jsonb) AS d; \n\nUPDATE cdd_cases SET current_phase = 'IDENTITY_VERIFICATION' WHERE id = {{ $json.case_id }}; \n\nINSERT INTO audit_log (case_id, entity_type, entity_id, action, actor, details) \nVALUES (\n  {{ $json.case_id }}, \n  'documents', \n  NULL, \n  'DOCUMENTS_COLLECTED', \n  'SYSTEM', \n  '{\"count\": {{ $json.valid_documents.length }}}'::jsonb\n);\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1792,
+        96
+      ],
+      "id": "7644ab54-64e0-4ab0-81de-49147d105d39",
+      "name": "Insert Documents",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $('Check Documents & Attestation').first().json;\nconst ct = data.customer_type_code;\nconst mandatoryEdd = data.mandatory_edd;\nconst nationality = data.nationality_status;\n\nconst isProvisionallyLow = \n  ['INDIVIDUAL'].includes(ct) && \n  !mandatoryEdd && \n  nationality === 'RESIDENT';\n\nconst applicant = $('Webhook Trigger').first().json.body.applicant;\nconst mockVerified = applicant.identity_doc_number && applicant.identity_doc_number.length >= 10;\n\nconst isEntityType = ['COMPANY', 'TRUST_CLUB_SOCIETY', 'NGO_NPO'].includes(ct);\nconst regDocsPresent = !isEntityType || data.valid_documents?.some(d => \n  ['MEMORANDUM_ARTICLES_OF_ASSOCIATION', 'CERTIFICATE_OF_REGISTRATION_OR_INSTRUMENT_OF_TRUST', 'REGISTRATION_DOCUMENTS_OR_SECP_LICENSE'].includes(d.document_type)\n);\n\nconst verificationPassed = mockVerified && regDocsPresent;\nconst deferVerification = isProvisionallyLow && verificationPassed;\n\nreturn [{\n  json: {\n    ...data,\n    verification_passed: verificationPassed,\n    verification_deferred: deferVerification,\n    sdd_eligibility_basis: deferVerification ? 'IRAR_CONFIG_V1' : null,\n    mock_verisys_result: { verified: mockVerified, doc_number: applicant.identity_doc_number }\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2016,
+        96
+      ],
+      "id": "67efe489-097e-435f-94a4-eafa4321ef5c",
+      "name": "Identity Verification (Mock)"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "8313c12e-76d0-4d2a-a916-2724c30a8c96",
+              "leftValue": "={{ $json.verification_passed }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        2240,
+        96
+      ],
+      "id": "bea3beba-445d-40f6-96b4-4a57a63785ee",
+      "name": "IF: Verification Passed?"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE cdd_cases \nSET status = 'REJECTED', current_phase = 'REJECTED', closed_at = now() \nWHERE id = {{ $json.case_id }}; \n\nINSERT INTO audit_log (case_id, entity_type, entity_id, action, actor, details) \nVALUES (\n  {{ $json.case_id }}, \n  'cdd_cases', \n  {{ $json.case_id }}, \n  'IDENTITY_VERIFICATION_FAILED', \n  'SYSTEM', \n  '{\"reason\": \"Verification failed\"}'::jsonb\n);\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2464,
+        192
+      ],
+      "id": "6a501730-4b8e-4cce-8f4d-88113f8d2586",
+      "name": "Case → REJECTED (Verification)",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"REJECTED\",\n  \"case_ref\": \"{{ $('Check Documents & Attestation').item.json.case_ref }}\",\n  \"reason\": \"Identity verification failed\"\n}\n",
+        "options": {
+          "responseCode": 422
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        2688,
+        192
+      ],
+      "id": "d543509a-bf9f-4312-b071-b547f4b26c32",
+      "name": "Respond: Verification Failed"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE cdd_cases \nSET \n  current_phase = 'BENEFICIAL_OWNERSHIP', \n  verification_deferred = {{ $json.verification_deferred }}, \n  sdd_eligibility_basis = {{ $json.sdd_eligibility_basis ? \"'\" + $json.sdd_eligibility_basis + \"'\" : 'NULL' }} \nWHERE id = {{ $json.case_id }}; \n\nUPDATE documents \nSET verified_at = now(), verification_source = 'NADRA_VERISYS' \nWHERE case_id = {{ $json.case_id }} AND verification_source IS NULL; \n\nINSERT INTO audit_log (case_id, entity_type, entity_id, action, actor, details) \nVALUES (\n  {{ $json.case_id }}, \n  'cdd_cases', \n  {{ $json.case_id }}, \n  'IDENTITY_VERIFIED', \n  'SYSTEM', \n  '{{ JSON.stringify({ deferred: $json.verification_deferred, sdd_basis: $json.sdd_eligibility_basis }) }}'::jsonb\n);\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2464,
+        0
+      ],
+      "id": "4d393079-a5be-47f3-ba68-c91de0f8e7d7",
+      "name": "Update Verification Status",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $('Identity Verification (Mock)').first().json;\nconst ct = data.customer_type_code;\nconst requiresBO = data.requires_bo_check;\nconst payload = $('Webhook Trigger').first().json.body;\n\nconst boRecords = [];\n\nif (!requiresBO) {\n  return [{ json: { ...data, bo_records: [], bo_skipped: true } }];\n}\n\nif (ct === 'COMPANY') {\n  const owners = payload.beneficial_owners || [];\n  const majorityOwners = owners.filter(o => o.ownership_percentage > 25);\n  \n  if (majorityOwners.length > 0) {\n    for (const o of majorityOwners) {\n      boRecords.push({ ...o, identification_tier: 'OWNERSHIP' });\n    }\n  } else {\n    const controllers = owners.filter(o => o.has_control);\n    if (controllers.length > 0) {\n      for (const c of controllers) {\n        boRecords.push({ ...c, identification_tier: 'CONTROL' });\n      }\n    } else {\n      const seniorOfficial = payload.senior_managing_official || { full_name: 'Not Provided', ownership_percentage: 0 };\n      boRecords.push({ ...seniorOfficial, identification_tier: 'SENIOR_OFFICIAL' });\n    }\n  }\n} else if (['TRUST_CLUB_SOCIETY', 'NGO_NPO'].includes(ct)) {\n  const trustDetails = payload.trust_details || {};\n  \n  if (trustDetails.settlor_name) {\n    boRecords.push({ full_name: trustDetails.settlor_name, identification_tier: 'OWNERSHIP', role: 'SETTLOR' });\n  }\n  if (trustDetails.trustees) {\n    for (const t of trustDetails.trustees) {\n      boRecords.push({ full_name: t.full_name, identification_tier: 'CONTROL', role: 'TRUSTEE' });\n    }\n  }\n  if (trustDetails.protector_name) {\n    boRecords.push({ full_name: trustDetails.protector_name, identification_tier: 'CONTROL', role: 'PROTECTOR' });\n  }\n  if (trustDetails.beneficiaries) {\n    for (const b of trustDetails.beneficiaries) {\n      boRecords.push({ full_name: b.full_name, identification_tier: 'OWNERSHIP', role: 'BENEFICIARY' });\n    }\n  }\n}\n\nreturn [{ json: { ...data, bo_records: boRecords, bo_skipped: false } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2688,
+        0
+      ],
+      "id": "2e290c71-090d-4af6-8498-1d037e7dbaf2",
+      "name": "Beneficial Ownership Check"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DO $$ \nDECLARE \n  bo_data jsonb := '{{ JSON.stringify($json.bo_records) }}'::jsonb; \n  bo record; \n  cust_id int; \nBEGIN \n  IF jsonb_array_length(bo_data) > 0 THEN \n    FOR bo IN SELECT * FROM jsonb_array_elements(bo_data) LOOP \n      INSERT INTO customers (case_id, role, full_name) \n      VALUES ({{ $json.case_id }}, COALESCE(bo.value->>'role', 'BENEFICIAL_OWNER'), bo.value->>'full_name') \n      RETURNING id INTO cust_id; \n      \n      INSERT INTO beneficial_owners (case_id, customer_id, identification_tier, ownership_percentage, verified) \n      VALUES ({{ $json.case_id }}, cust_id, bo.value->>'identification_tier', COALESCE((bo.value->>'ownership_percentage')::numeric, 0), FALSE); \n    END LOOP; \n  END IF; \n  \n  UPDATE cdd_cases SET current_phase = 'PEP_SCREENING' WHERE id = {{ $json.case_id }}; \n  \n  INSERT INTO audit_log (case_id, entity_type, entity_id, action, actor, details) \n  VALUES (\n    {{ $json.case_id }}, \n    'beneficial_owners', \n    NULL, \n    CASE WHEN {{ $json.bo_skipped }} THEN 'BO_CHECK_SKIPPED' ELSE 'BO_CHECK_COMPLETED' END, \n    'SYSTEM', \n    ('{{ JSON.stringify({ count: $json.bo_records.length, skipped: $json.bo_skipped }) }}')::jsonb\n  ); \nEND $$;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        2912,
+        0
+      ],
+      "id": "73a3fd4b-69d6-4564-9c32-8b2b0358beab",
+      "name": "Insert BO Records",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DO $$ \nDECLARE \n  pep_data jsonb := '{{ JSON.stringify($json.all_screened_persons) }}'::jsonb; \n  p record; \nBEGIN \n  FOR p IN SELECT * FROM jsonb_array_elements(pep_data) LOOP \n    INSERT INTO pep_screening_results (case_id, customer_id, is_pep, pep_category, relationship_to_pep, match_confidence) \n    VALUES ( \n      {{ $json.case_id }}, \n      (p.value->>'customer_id')::int, \n      (p.value->>'is_pep')::boolean, \n      p.value->>'pep_category', \n      p.value->>'relationship_type', \n      CASE WHEN (p.value->>'is_pep')::boolean THEN 100.00 ELSE 0.00 END \n    ); \n  END LOOP; \n  \n  INSERT INTO audit_log (case_id, entity_type, entity_id, action, actor, details) \n  VALUES (\n    {{ $json.case_id }}, \n    'pep_screening_results', \n    NULL, \n    'PEP_SCREENING_COMPLETED', \n    'SYSTEM', \n    ('{{ JSON.stringify({ matches: $json.pep_matches.length, total_screened: $json.all_screened_persons.length }) }}')::jsonb\n  ); \nEND $$;\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        3584,
+        0
+      ],
+      "id": "fc54be2e-a061-43ae-8bec-f6419c1e7a8e",
+      "name": "Insert PEP Results",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  c.id as customer_id, \n  c.full_name, \n  c.role, \n  CASE WHEN sw.id IS NOT NULL THEN TRUE ELSE FALSE END as is_sanctioned, \n  sw.list_type \nFROM customers c \nLEFT JOIN sanctions_watchlist_seed sw ON LOWER(c.full_name) = LOWER(sw.full_name) \nWHERE c.case_id = {{ $('Check Documents & Attestation').item.json.case_id }};\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        3808,
+        0
+      ],
+      "id": "997d340a-9143-4e3b-ab99-526f7168af92",
+      "name": "TFS Screening",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $('Process PEP Results').first().json;\nconst tfsResults = $('TFS Screening').all().map(item => item.json);\n\nconst sanctionMatches = tfsResults.filter(r => r.is_sanctioned);\nconst hasSanctionMatch = sanctionMatches.length > 0;\n\nreturn [{\n  json: {\n    ...data,\n    tfs_matches: sanctionMatches,\n    has_sanction_match: hasSanctionMatch,\n    all_tfs_screened: tfsResults\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4032,
+        0
+      ],
+      "id": "e522654c-b74e-4ea4-b873-0b16e334bb07",
+      "name": "Process TFS Results"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "01f58531-5387-45e8-a106-d9f920f14f83",
+              "leftValue": "={{ $json.has_sanction_match }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        4256,
+        0
+      ],
+      "id": "25f03c7c-b091-43bc-b123-e7b02e3aa79a",
+      "name": "IF: No Sanctions Match?"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DO $$ \nDECLARE \n  tfs_data jsonb := '{{ JSON.stringify($json.tfs_matches) }}'::jsonb; \n  t record; \nBEGIN \n  FOR t IN SELECT * FROM jsonb_array_elements(tfs_data) LOOP \n    INSERT INTO tfs_screening_results (case_id, customer_id, match_found, list_type, action_taken, frozen_at, reported_within_48h) \n    VALUES ( \n      {{ $json.case_id }}, \n      (t.value->>'customer_id')::int, \n      TRUE, \n      t.value->>'list_type', \n      'FROZEN', \n      now(), \n      TRUE \n    ); \n  END LOOP; \n  \n  UPDATE cdd_cases \n  SET status = 'REJECTED', current_phase = 'REJECTED', suspicion_flag = TRUE, closed_at = now() \n  WHERE id = {{ $json.case_id }}; \n  \n  INSERT INTO audit_log (case_id, entity_type, entity_id, action, actor, details) \n  VALUES (\n    {{ $json.case_id }}, \n    'tfs_screening_results', \n    NULL, \n    'TFS_MATCH_FROZEN', \n    'SYSTEM', \n    ('{{ JSON.stringify({ matches: $json.tfs_matches, deadline_48h: new Date(Date.now() + 48*60*60*1000).toISOString() }) }}')::jsonb\n  ); \nEND $$;\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        4480,
+        96
+      ],
+      "id": "883711cf-af1e-4142-a22c-cddcfa08087b",
+      "name": "FREEZE & Reject (TFS Match)",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"FROZEN\",\n  \"case_ref\": \"{{ $('Check Documents & Attestation').item.json.case_ref }}\",\n  \"reason\": \"TFS/Sanctions match found — assets frozen per Reg 4 §7\",\n  \"matches\": {{ JSON.stringify($('Process TFS Results').item.json.tfs_matches) }},\n  \"sbp_report_deadline\": \"Within 48 hours of freezing (Reg 4 §7(c))\"\n}\n",
+        "options": {
+          "responseCode": 403
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        4704,
+        96
+      ],
+      "id": "2bd7c2da-b565-4a43-9344-43f22f3208e1",
+      "name": "Respond: Frozen"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DO $$ \nDECLARE \n  tfs_data jsonb := '{{ JSON.stringify($json.all_tfs_screened) }}'::jsonb; \n  t record; \nBEGIN \n  FOR t IN SELECT * FROM jsonb_array_elements(tfs_data) LOOP \n    INSERT INTO tfs_screening_results (case_id, customer_id, match_found, list_type, action_taken) \n    VALUES ( \n      {{ $json.case_id }}, \n      (t.value->>'customer_id')::int, \n      FALSE, \n      NULL, \n      'NONE' \n    ); \n  END LOOP; \n  \n  UPDATE cdd_cases SET current_phase = 'RISK_PROFILING' WHERE id = {{ $json.case_id }}; \n  \n  INSERT INTO audit_log (case_id, entity_type, entity_id, action, actor, details) \n  VALUES (\n    {{ $json.case_id }}, \n    'tfs_screening_results', \n    NULL, \n    'TFS_SCREENING_CLEAR', \n    'SYSTEM', \n    '{\"matches\": 0}'::jsonb\n  ); \nEND $$;\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        4480,
+        -96
+      ],
+      "id": "1c819842-af0a-42f6-8a15-cd3370b1fa9b",
+      "name": "Insert TFS Clear Results",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM irar_config WHERE is_active = TRUE LIMIT 1;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        4704,
+        -96
+      ],
+      "id": "43cc4d73-a254-4d30-995c-3d4ad21c97aa",
+      "name": "Load IRAR Config (Reg 1)",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $('Process TFS Results').first().json;\nconst irar = $('Load IRAR Config (Reg 1)').first().json;\n\nlet score = 0;\nconst factors = {};\n\nif (['TRUST_CLUB_SOCIETY', 'NGO_NPO'].includes(data.customer_type_code)) {\n  score += parseFloat(irar.weight_customer_type_high);\n  factors.customer_type = parseFloat(irar.weight_customer_type_high);\n} else if (['COMPANY', 'FOREIGN_BRANCH', 'LLP', 'PARTNERSHIP'].includes(data.customer_type_code)) {\n  score += parseFloat(irar.weight_customer_type_medium);\n  factors.customer_type = parseFloat(irar.weight_customer_type_medium);\n} else {\n  factors.customer_type = 0;\n}\n\nif (data.has_pep_match) {\n  const hasDirectPep = data.pep_matches.some(m => m.relationship_type === 'DIRECT');\n  if (hasDirectPep) {\n    score += parseFloat(irar.weight_pep_match);\n    factors.pep = parseFloat(irar.weight_pep_match);\n  } else {\n    score += parseFloat(irar.weight_pep_family);\n    factors.pep_family = parseFloat(irar.weight_pep_family);\n  }\n} else {\n  factors.pep = 0;\n}\n\nif (data.nationality_status === 'NON_RESIDENT') {\n  score += parseFloat(irar.weight_foreign_nationality);\n  factors.foreign_nationality = parseFloat(irar.weight_foreign_nationality);\n} else {\n  factors.foreign_nationality = 0;\n}\n\nlet riskTier;\nif (score <= parseFloat(irar.threshold_low_max)) {\n  riskTier = 'LOW';\n} else if (score <= parseFloat(irar.threshold_medium_max)) {\n  riskTier = 'MEDIUM';\n} else {\n  riskTier = 'HIGH';\n}\n\nconst suspicionFlag = data.suspicion_flag || data.has_sanction_match;\nconst mandatoryEdd = data.mandatory_edd;\nconst eddFromPep = data.edd_from_pep;\n\nlet ddType;\nlet triggerReason;\nlet seniorMgRequired = false;\n\nif (suspicionFlag) {\n  ddType = 'EDD';\n  triggerReason = 'SUSPICION_FLAG';\n  seniorMgRequired = true;\n} else if (riskTier === 'HIGH' && irar.edd_required_for_high) {\n  ddType = 'EDD';\n  triggerReason = 'HIGH_RISK_TIER';\n  seniorMgRequired = true;\n} else if (mandatoryEdd && irar.edd_mandatory_for_ngo_trust) {\n  ddType = 'EDD';\n  triggerReason = 'NGO_TRUST_MANDATORY';\n  seniorMgRequired = true;\n} else if (eddFromPep && irar.edd_mandatory_for_pep) {\n  ddType = 'EDD';\n  triggerReason = 'PEP_MATCH';\n  seniorMgRequired = true;\n} else if (riskTier === 'LOW' && irar.sdd_allowed_for_low && !suspicionFlag) {\n  ddType = 'SDD';\n  triggerReason = 'LOW_RISK_TIER';\n} else {\n  ddType = 'CDD';\n  triggerReason = 'STANDARD_RISK';\n}\n\nconst measures = [];\nif (ddType === 'EDD') {\n  measures.push({ code: 'EDD_A', is_completed: false });\n  measures.push({ code: 'EDD_B', is_completed: false });\n  measures.push({ code: 'EDD_C', is_completed: false });\n  measures.push({ code: 'EDD_E', is_completed: false });\n  measures.push({ code: 'EDD_F', is_completed: false });\n  measures.push({ code: 'EDD_G', is_completed: false });\n} else if (ddType === 'SDD') {\n  measures.push({ code: 'SDD_A', is_completed: data.verification_deferred });\n  measures.push({ code: 'SDD_B', is_completed: false });\n  measures.push({ code: 'SDD_C', is_completed: true });\n}\n\nreturn [{\n  json: {\n    ...data,\n    risk_score: score,\n    risk_tier: riskTier,\n    scoring_factors: factors,\n    irar_config_id: irar.id,\n    irar_config_version: irar.config_version,\n    dd_type: ddType,\n    dd_trigger_reason: triggerReason,\n    senior_mgmt_approval_required: seniorMgRequired,\n    dd_measures: measures\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4928,
+        -96
+      ],
+      "id": "f9a70306-e3e6-4b5d-9d1e-ebcce1e9af38",
+      "name": "Risk Profiling & DD Determination"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO risk_profile (case_id, irar_config_id, risk_tier, score, scoring_factors, assigned_by) \nVALUES ({{ $json.case_id }}, {{ $json.irar_config_id }}, '{{ $json.risk_tier }}', {{ $json.risk_score }}, '{{ JSON.stringify($json.scoring_factors) }}'::jsonb, 'SYSTEM'); \n\nINSERT INTO dd_determination (case_id, dd_type, trigger_reason, senior_mgmt_approval_required) \nVALUES ({{ $json.case_id }}, '{{ $json.dd_type }}', '{{ $json.dd_trigger_reason }}', {{ $json.senior_mgmt_approval_required }}) \nRETURNING id;\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        5152,
+        -96
+      ],
+      "id": "a74faf74-4418-450e-bb52-d16598ebd70b",
+      "name": "Insert Risk & DD",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DO $$ \nDECLARE \n  dd_id int; \n  measures jsonb := '{{ JSON.stringify($('Risk Profiling & DD Determination').first().json.dd_measures) }}'::jsonb; \n  m record; \nBEGIN \n  SELECT id INTO dd_id FROM dd_determination WHERE case_id = {{ $('Risk Profiling & DD Determination').first().json.case_id }} ORDER BY id DESC LIMIT 1; \n  \n  IF jsonb_array_length(measures) > 0 THEN \n    FOR m IN SELECT * FROM jsonb_array_elements(measures) LOOP \n      INSERT INTO dd_determination_measures (dd_determination_id, measure_code, is_completed) \n      VALUES (dd_id, m.value->>'code', (m.value->>'is_completed')::boolean); \n    END LOOP; \n  END IF; \n  \n  UPDATE cdd_cases SET current_phase = 'APPROVAL' WHERE id = {{ $('Risk Profiling & DD Determination').first().json.case_id }}; \n  \n  INSERT INTO audit_log (case_id, entity_type, entity_id, action, actor, details) \n  VALUES (\n    {{ $('Risk Profiling & DD Determination').first().json.case_id }}, \n    'dd_determination', \n    dd_id, \n    'DD_DETERMINED', \n    'SYSTEM', \n    ('{{ JSON.stringify({ dd_type: $('Risk Profiling & DD Determination').first().json.dd_type, risk_tier: $('Risk Profiling & DD Determination').first().json.risk_tier, measures_count: $('Risk Profiling & DD Determination').first().json.dd_measures.length }) }}')::jsonb\n  ); \nEND $$;\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        5376,
+        -96
+      ],
+      "id": "9c19644e-3af8-4d48-ac75-e87fcac54592",
+      "name": "Insert DD Measures",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "4df6923b-69a8-4dad-aced-a9b272f34349",
+              "leftValue": "={{ $('Risk Profiling & DD Determination').first().json.senior_mgmt_approval_required }}",
+              "rightValue": "false",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        5600,
+        -96
+      ],
+      "id": "2a563993-db1c-4964-9638-a27fb3d4f086",
+      "name": "IF: Sr Mgmt Approval Needed?"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO approvals (case_id, approver_name, approver_role, decision, decision_at, comments) \nVALUES (\n  {{ $('Get Case Details by Ref').first().json.case_id }}, \n  '{{ $('Manager Approval Webhook').first().json.body.approver_name || 'Senior Manager' }}', \n  '{{ $('Manager Approval Webhook').first().json.body.approver_role || 'SENIOR_MANAGEMENT' }}', \n  '{{ $('Manager Approval Webhook').first().json.body.decision }}', \n  now(), \n  '{{ $('Manager Approval Webhook').first().json.body.comments || '' }}'\n); \n\nUPDATE dd_determination \nSET \n  senior_mgmt_approved_by = '{{ $('Manager Approval Webhook').first().json.body.approver_name || 'Senior Manager' }}', \n  senior_mgmt_approved_at = now() \nWHERE case_id = {{ $('Get Case Details by Ref').first().json.case_id }}; \n\nUPDATE dd_determination_measures \nSET is_completed = TRUE, completed_at = now() \nWHERE dd_determination_id = {{ $('Get Case Details by Ref').first().json.dd_determination_id }} \n  AND measure_code = 'EDD_F'; \n\nINSERT INTO audit_log (case_id, entity_type, entity_id, action, actor, details) \nVALUES (\n  {{ $('Get Case Details by Ref').first().json.case_id }}, \n  'approvals', \n  NULL, \n  'SENIOR_MGMT_DECISION', \n  '{{ $('Manager Approval Webhook').first().json.body.approver_name || 'Senior Manager' }}', \n  ('{{ JSON.stringify({ decision: $('Manager Approval Webhook').first().json.body.decision }) }}')::jsonb\n);\n\nSELECT {{ $('Get Case Details by Ref').first().json.case_id }}::int as case_id;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        5600,
+        384
+      ],
+      "id": "ea641554-df14-454a-a9f7-19c2763ff93e",
+      "name": "Process Approval Decision",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "3115796e-21e4-4167-bc84-4ddf883f9289",
+              "leftValue": "={{ $('Manager Approval Webhook').first().json.body.decision }}",
+              "rightValue": "APPROVED",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        5824,
+        384
+      ],
+      "id": "8340a6e1-8ffd-496e-b68d-d166c26c4a27",
+      "name": "IF: Approved?"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE cdd_cases \nSET status = 'REJECTED', current_phase = 'REJECTED', closed_at = now() \nWHERE id = {{ $('Get Case Details by Ref').first().json.case_id }}; \n\nINSERT INTO audit_log (case_id, entity_type, entity_id, action, actor, details) \nVALUES (\n  {{ $('Get Case Details by Ref').first().json.case_id }}, \n  'cdd_cases', \n  {{ $('Get Case Details by Ref').first().json.case_id }}, \n  'APPROVAL_REJECTED', \n  'SYSTEM', \n  '{}'::jsonb\n);\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        6048,
+        432
+      ],
+      "id": "ef24e5f2-5dfa-4f84-9d4b-036757031e34",
+      "name": "Case → REJECTED (Approval)",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"REJECTED\",\n  \"case_ref\": \"{{ $('Manager Approval Webhook').first().json.body.case_ref }}\",\n  \"reason\": \"Senior management rejected the case\"\n}",
+        "options": {
+          "responseCode": 403
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        6272,
+        432
+      ],
+      "id": "89cf6704-8de5-470a-a3bd-01895497b8bd",
+      "name": "Respond: Approval Rejected"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO approvals (case_id, approver_name, approver_role, decision, decision_at, comments) \nVALUES (\n  {{ $('Risk Profiling & DD Determination').first().json.case_id }}, \n  'Auto-Approved', \n  'COMPLIANCE_OFFICER', \n  'APPROVED', \n  now(), \n  'CDD/SDD case — no senior management approval required'\n); \n\nINSERT INTO audit_log (case_id, entity_type, entity_id, action, actor, details) \nVALUES (\n  {{ $('Risk Profiling & DD Determination').first().json.case_id }}, \n  'approvals', \n  NULL, \n  'AUTO_APPROVED', \n  'SYSTEM', \n  '{\"reason\": \"No senior management approval required for CDD/SDD\"}'::jsonb\n);\n\nSELECT {{ $('Risk Profiling & DD Determination').first().json.case_id }}::int as case_id;\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        5824,
+        0
+      ],
+      "id": "c4476dd8-e22d-4dcf-8015-1a5b526a893e",
+      "name": "Auto-Approve (CDD/SDD)",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  c.id as case_id, \n  c.case_ref, \n  rp.risk_tier, \n  rp.score as risk_score, \n  dd.dd_type, \n  dd.trigger_reason as dd_trigger_reason, \n  c.verification_deferred,\n  (SELECT config_version FROM irar_config WHERE id = rp.irar_config_id) as irar_version,\n  CASE \n    WHEN dd.dd_type != 'EDD' THEN TRUE\n    WHEN (SELECT is_completed FROM dd_determination_measures WHERE dd_determination_id = dd.id AND measure_code = 'EDD_F') THEN TRUE\n    ELSE FALSE \n  END as all_measures_complete, \n  COUNT(m.id) as total_measures, \n  SUM(CASE WHEN m.is_completed THEN 1 ELSE 0 END) as completed_measures \nFROM cdd_cases c \nLEFT JOIN risk_profile rp ON c.id = rp.case_id \nLEFT JOIN dd_determination dd ON c.id = dd.case_id \nLEFT JOIN dd_determination_measures m ON dd.id = m.dd_determination_id \nWHERE c.id = {{ $json.case_id }} \nGROUP BY c.id, c.case_ref, rp.risk_tier, rp.score, dd.dd_type, dd.trigger_reason, rp.irar_config_id, dd.id;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        6048,
+        192
+      ],
+      "id": "084ad6f2-0e17-4ab8-bfb4-854fa3b3add8",
+      "name": "Check All Measures Complete",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "f04ac98e-69f8-412f-b67b-16b081af1c9b",
+              "leftValue": "={{ $json.all_measures_complete }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        6272,
+        192
+      ],
+      "id": "c6f8abba-71c7-49f6-8ca9-59e16307ba24",
+      "name": "IF: Measures Complete?"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE cdd_cases \nSET status = 'ON_HOLD', current_phase = 'APPROVAL' \nWHERE id = {{ $json.case_id }}; \n\nINSERT INTO audit_log (case_id, entity_type, entity_id, action, actor, details) \nVALUES (\n  {{ $json.case_id }}, \n  'dd_determination_measures', \n  NULL, \n  'MEASURES_INCOMPLETE_BLOCKED', \n  'SYSTEM', \n  ('{{ JSON.stringify({ total: $json.total_measures, completed: $json.completed_measures }) }}')::jsonb\n);\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        6496,
+        384
+      ],
+      "id": "b0ec33e3-c44c-4a84-ae5b-f7d1c093703b",
+      "name": "Block: Measures Incomplete",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"ON_HOLD\",\n  \"case_ref\": \"{{ $('Check All Measures Complete').first().json.case_ref }}\",\n  \"reason\": \"EDD measures incomplete — account creation blocked\",\n  \"total_measures\": {{ $('Check All Measures Complete').first().json.total_measures || 0 }},\n  \"completed_measures\": {{ $('Check All Measures Complete').first().json.completed_measures || 0 }}\n}",
+        "options": {
+          "responseCode": 422
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        6720,
+        384
+      ],
+      "id": "43ce4c46-7d90-4b3e-8a7d-abc84a89311a",
+      "name": "Respond: Measures Incomplete"
+    },
+    {
+      "parameters": {
+        "jsCode": "const caseData = $json;\nconst ddType = caseData.dd_type;\n\nconst timestamp = Date.now().toString(36).toUpperCase();\nconst random = Math.random().toString(36).substring(2, 8).toUpperCase();\nconst accountNumber = `PK-${timestamp}-${random}`;\n\nconst monitoringTier = ddType === 'EDD' ? 'ENHANCED' : 'STANDARD';\n\nreturn [{ json: { ...caseData, account_number: accountNumber, monitoring_tier: monitoringTier } }];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6496,
+        96
+      ],
+      "id": "826324be-a929-433f-bc8c-4a5f2b9e3e1c",
+      "name": "Generate Account Number"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO accounts (case_id, account_number, monitoring_tier, opened_at, status) \nVALUES ({{ $json.case_id }}, '{{ $json.account_number }}', '{{ $json.monitoring_tier }}', now(), 'ACTIVE'); \n\nUPDATE cdd_cases \nSET status = 'APPROVED', current_phase = 'COMPLETE', closed_at = now() \nWHERE id = {{ $json.case_id }}; \n\nINSERT INTO audit_log (case_id, entity_type, entity_id, action, actor, details) \nVALUES (\n  {{ $json.case_id }}, \n  'accounts', \n  NULL, \n  'ACCOUNT_CREATED', \n  'SYSTEM', \n  ('{{ JSON.stringify({ account_number: $json.account_number, monitoring_tier: $json.monitoring_tier, dd_type: $json.dd_type }) }}')::jsonb\n);",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        6720,
+        192
+      ],
+      "id": "a794a981-725b-4dc7-9d7d-339d1858e1b4",
+      "name": "Create Account",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"APPROVED\",\n  \"case_ref\": \"{{ $('Generate Account Number').first().json.case_ref }}\",\n  \"risk_tier\": \"{{ $('Generate Account Number').first().json.risk_tier }}\",\n  \"risk_score\": {{ $('Generate Account Number').first().json.risk_score }},\n  \"dd_type\": \"{{ $('Generate Account Number').first().json.dd_type }}\",\n  \"dd_trigger\": \"{{ $('Generate Account Number').first().json.dd_trigger_reason }}\",\n  \"account_number\": \"{{ $('Generate Account Number').first().json.account_number }}\",\n  \"monitoring_tier\": \"{{ $('Generate Account Number').first().json.monitoring_tier }}\",\n  \"irar_version\": \"{{ $('Generate Account Number').first().json.irar_version }}\",\n  \"verification_deferred\": {{ $('Generate Account Number').first().json.verification_deferred }}\n}\n",
+        "options": {
+          "responseCode": 201
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        6944,
+        192
+      ],
+      "id": "d162c09e-777b-40df-98c5-1e844472f758",
+      "name": "Respond: Success"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  c.id as customer_id, \n  c.full_name, \n  c.role, \n  CASE WHEN pw.id IS NOT NULL THEN TRUE ELSE FALSE END as is_pep, \n  pw.pep_category, \n  pw.relationship_type, \n  pw.related_pep_name, \n  pw.position_title \nFROM customers c \nLEFT JOIN pep_watchlist_seed pw ON LOWER(c.full_name) = LOWER(pw.full_name) \nWHERE c.case_id = {{ $('Check Documents & Attestation').item.json.case_id }};\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        3136,
+        0
+      ],
+      "id": "221ae64e-6a7b-4bdf-b50c-03d43b81911a",
+      "name": "PEP Screening",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $('Beneficial Ownership Check').first().json;\nconst pepResults = $('PEP Screening').all().map(item => item.json);\n\nconst pepMatches = pepResults.filter(r => r.is_pep);\nconst hasPepMatch = pepMatches.length > 0;\n\nreturn [{\n  json: {\n    ...data,\n    pep_matches: pepMatches,\n    has_pep_match: hasPepMatch,\n    all_screened_persons: pepResults,\n    edd_from_pep: hasPepMatch\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3360,
+        0
+      ],
+      "id": "9ef6f531-ce35-48be-a8e3-88e7d8bbb3e7",
+      "name": "Process PEP Results"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"status\": \"PENDING_APPROVAL\",\n  \"case_ref\": \"{{ $('Check Documents & Attestation').first().json.case_ref }}\",\n  \"reason\": \"Case requires senior management approval (EDD/PEP/Trust/NGO/High Risk)\"\n}\n",
+        "options": {
+          "responseCode": 202
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        5824,
+        -192
+      ],
+      "id": "97e7b36a-1fb1-490f-8cb5-cf25fea1a44d",
+      "name": "Respond: Pending Approval"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "uc1-approve-case",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        5152,
+        384
+      ],
+      "id": "41d7f865-4fe0-417f-a614-97c0e7dcc764",
+      "name": "Manager Approval Webhook",
+      "webhookId": "80e75126-d80b-4296-97db-72bd81245e7e"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  c.id as case_id, \n  c.status, \n  c.current_phase, \n  rp.risk_tier, \n  dd.dd_type, \n  dd.id as dd_determination_id\nFROM cdd_cases c\nLEFT JOIN risk_profile rp ON c.id = rp.case_id\nLEFT JOIN dd_determination dd ON c.id = dd.case_id\nWHERE c.case_ref = '{{ $('Manager Approval Webhook').first().json.body.case_ref }}'\nORDER BY dd.id DESC LIMIT 1;\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        5376,
+        384
+      ],
+      "id": "cdb3d12a-4e04-4420-913c-11eaad7110ce",
+      "name": "Get Case Details by Ref",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "shazanali3210@gmail.com",
+        "toEmail": "shazanali3210@gmail.com",
+        "subject": "=[AML Compliance Report] {{ $json.status }} - Case: {{ $json.case_ref }}",
+        "html": "=<!DOCTYPE html>\n<html>\n<head>\n  <style>\n    body {\n      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;\n      color: #333333;\n      background-color: #f4f6f9;\n      margin: 0;\n      padding: 40px;\n    }\n    .card {\n      background-color: #ffffff;\n      border-radius: 12px;\n      box-shadow: 0 4px 12px rgba(0,0,0,0.05);\n      max-width: 600px;\n      margin: 0 auto;\n      overflow: hidden;\n      border: 1px solid #e1e4e8;\n    }\n    .header {\n      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);\n      color: #ffffff;\n      padding: 30px;\n      text-align: center;\n    }\n    .header h1 {\n      margin: 0;\n      font-size: 24px;\n      font-weight: 600;\n    }\n    .header p {\n      margin: 5px 0 0 0;\n      opacity: 0.8;\n      font-size: 14px;\n    }\n    .content {\n      padding: 30px;\n    }\n    .badge {\n      display: inline-block;\n      padding: 6px 12px;\n      font-size: 12px;\n      font-weight: 700;\n      border-radius: 20px;\n      text-transform: uppercase;\n      margin-bottom: 20px;\n    }\n    .section-title {\n      font-size: 13px;\n      text-transform: uppercase;\n      letter-spacing: 1px;\n      color: #718096;\n      border-bottom: 1px solid #edf2f7;\n      padding-bottom: 5px;\n      margin-top: 20px;\n      margin-bottom: 10px;\n      font-weight: bold;\n    }\n    .footer {\n      background-color: #f8f9fa;\n      padding: 15px;\n      text-align: center;\n      font-size: 11px;\n      color: #718096;\n      border-top: 1px solid #edf2f7;\n    }\n  </style>\n</head>\n<body>\n  <div class=\"card\">\n    <div class=\"header\">\n      <h1>AML CDD Onboarding Report</h1>\n      <p>Case Reference: {{ $json.case_ref }}</p>\n    </div>\n    <div class=\"content\">\n      <div class=\"badge badge-approved\" style=\"background-color: #e2f9e1; color: #1e7e34; padding: 6px 12px; border-radius: 20px; font-weight: bold; display: inline-block;\">\n        Status: APPROVED\n      </div>\n      \n      <div class=\"section-title\">\n        Case Risk Profile\n      </div>\n      <table style=\"width: 100%; font-size: 14px; border-collapse: collapse;\">\n        <tr>\n          <td style=\"padding: 6px 0; color: #718096; width: 40%;\">Assigned Risk Tier:</td>\n          <td style=\"padding: 6px 0; font-weight: 600; color: #2d3748;\">{{ $json.risk_tier }}</td>\n        </tr>\n        <tr>\n          <td style=\"padding: 6px 0; color: #718096;\">Aggregated Score:</td>\n          <td style=\"padding: 6px 0; font-weight: 600; color: #2d3748;\">{{ $json.risk_score }} / 100</td>\n        </tr>\n        <tr>\n          <td style=\"padding: 6px 0; color: #718096;\">Due Diligence:</td>\n          <td style=\"padding: 6px 0; font-weight: 600; color: #2d3748;\">{{ $json.dd_type }}</td>\n        </tr>\n        <tr>\n          <td style=\"padding: 6px 0; color: #718096;\">Trigger Basis:</td>\n          <td style=\"padding: 6px 0; font-weight: 600; color: #2d3748;\">{{ $json.dd_trigger_reason }}</td>\n        </tr>\n      </table>\n\n      <div class=\"section-title\">\n        Account Credentials\n      </div>\n      <table style=\"width: 100%; font-size: 14px; border-collapse: collapse;\">\n        <tr>\n          <td style=\"padding: 6px 0; color: #718096; width: 40%;\">Generated IBAN:</td>\n          <td style=\"padding: 6px 0; font-family: monospace; font-weight: 600; color: #1e3c72; font-size: 13px;\">{{ $json.account_number }}</td>\n        </tr>\n        <tr>\n          <td style=\"padding: 6px 0; color: #718096;\">Monitoring Tier:</td>\n          <td style=\"padding: 6px 0; font-weight: 600; color: #2d3748;\">{{ $json.monitoring_tier }}</td>\n        </tr>\n        <tr>\n          <td style=\"padding: 6px 0; color: #718096;\">IRAR Config:</td>\n          <td style=\"padding: 6px 0; font-weight: 600; color: #2d3748;\">Version {{ $json.irar_version }}</td>\n        </tr>\n        <tr>\n          <td style=\"padding: 6px 0; color: #718096;\">Identity Verification:</td>\n          <td style=\"padding: 6px 0; font-weight: 600; color: #2d3748;\">{{ $json.verification_deferred ? 'Deferred (Post-Onboarding)' : 'Completed and Attested' }}</td>\n        </tr>\n      </table>\n    </div>\n    <div class=\"footer\">\n      State Bank of Pakistan (SBP) Compliance Sandbox — Automated Report\n    </div>\n  </div>\n</body>\n</html>\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        6720,
+        0
+      ],
+      "id": "61380e74-acd7-4d32-9de9-593580b35578",
+      "name": "Send Compliance Email",
+      "webhookId": "dc6c8683-c6ed-44f3-a8c5-227a75cd8170",
+      "credentials": {
+        "smtp": {
+          "id": "8Rb60oaV0VVNTtzH",
+          "name": "SMTP account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "RE Type Gate Lookup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RE Type Gate Lookup": {
+      "main": [
+        [
+          {
+            "node": "IF: Applicable?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Applicable?": {
+      "main": [
+        [
+          {
+            "node": "Insert CDD Case",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond: Not Applicable",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert CDD Case": {
+      "main": [
+        [
+          {
+            "node": "Insert Primary Customer",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Primary Customer": {
+      "main": [
+        [
+          {
+            "node": "Lookup Doc Checklist",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lookup Doc Checklist": {
+      "main": [
+        [
+          {
+            "node": "Check Documents & Attestation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Documents & Attestation": {
+      "main": [
+        [
+          {
+            "node": "IF: Docs Complete?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Docs Complete?": {
+      "main": [
+        [
+          {
+            "node": "Insert Documents",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Case → ON_HOLD (Incomplete)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Case → ON_HOLD (Incomplete)": {
+      "main": [
+        [
+          {
+            "node": "Respond: Incomplete Docs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Documents": {
+      "main": [
+        [
+          {
+            "node": "Identity Verification (Mock)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Identity Verification (Mock)": {
+      "main": [
+        [
+          {
+            "node": "IF: Verification Passed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Verification Passed?": {
+      "main": [
+        [
+          {
+            "node": "Update Verification Status",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Case → REJECTED (Verification)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Case → REJECTED (Verification)": {
+      "main": [
+        [
+          {
+            "node": "Respond: Verification Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Verification Status": {
+      "main": [
+        [
+          {
+            "node": "Beneficial Ownership Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Beneficial Ownership Check": {
+      "main": [
+        [
+          {
+            "node": "Insert BO Records",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert BO Records": {
+      "main": [
+        [
+          {
+            "node": "PEP Screening",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert PEP Results": {
+      "main": [
+        [
+          {
+            "node": "TFS Screening",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TFS Screening": {
+      "main": [
+        [
+          {
+            "node": "Process TFS Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process TFS Results": {
+      "main": [
+        [
+          {
+            "node": "IF: No Sanctions Match?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: No Sanctions Match?": {
+      "main": [
+        [
+          {
+            "node": "Insert TFS Clear Results",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "FREEZE & Reject (TFS Match)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "FREEZE & Reject (TFS Match)": {
+      "main": [
+        [
+          {
+            "node": "Respond: Frozen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert TFS Clear Results": {
+      "main": [
+        [
+          {
+            "node": "Load IRAR Config (Reg 1)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load IRAR Config (Reg 1)": {
+      "main": [
+        [
+          {
+            "node": "Risk Profiling & DD Determination",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Risk Profiling & DD Determination": {
+      "main": [
+        [
+          {
+            "node": "Insert Risk & DD",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Risk & DD": {
+      "main": [
+        [
+          {
+            "node": "Insert DD Measures",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert DD Measures": {
+      "main": [
+        [
+          {
+            "node": "IF: Sr Mgmt Approval Needed?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Sr Mgmt Approval Needed?": {
+      "main": [
+        [
+          {
+            "node": "Respond: Pending Approval",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Auto-Approve (CDD/SDD)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Approval Decision": {
+      "main": [
+        [
+          {
+            "node": "IF: Approved?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Approved?": {
+      "main": [
+        [
+          {
+            "node": "Check All Measures Complete",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Case → REJECTED (Approval)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Case → REJECTED (Approval)": {
+      "main": [
+        [
+          {
+            "node": "Respond: Approval Rejected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Auto-Approve (CDD/SDD)": {
+      "main": [
+        [
+          {
+            "node": "Check All Measures Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check All Measures Complete": {
+      "main": [
+        [
+          {
+            "node": "IF: Measures Complete?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Measures Complete?": {
+      "main": [
+        [
+          {
+            "node": "Generate Account Number",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Block: Measures Incomplete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Block: Measures Incomplete": {
+      "main": [
+        [
+          {
+            "node": "Respond: Measures Incomplete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond: Measures Incomplete": {
+      "main": [
+        []
+      ]
+    },
+    "Create Account": {
+      "main": [
+        [
+          {
+            "node": "Respond: Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PEP Screening": {
+      "main": [
+        [
+          {
+            "node": "Process PEP Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process PEP Results": {
+      "main": [
+        [
+          {
+            "node": "Insert PEP Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manager Approval Webhook": {
+      "main": [
+        [
+          {
+            "node": "Get Case Details by Ref",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Case Details by Ref": {
+      "main": [
+        [
+          {
+            "node": "Process Approval Decision",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Account Number": {
+      "main": [
+        [
+          {
+            "node": "Create Account",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send Compliance Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond: Success": {
+      "main": [
+        []
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "556bd37c-19d9-4bc3-8032-58b009a751b2",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "eeda824893ce98822b0b4043b43e928e49b7621bae4482aa410a3b9883ce47cf"
+  },
+  "nodeGroups": [],
+  "id": "BupGp5g3TAIyOa5n",
+  "tags": []
+}

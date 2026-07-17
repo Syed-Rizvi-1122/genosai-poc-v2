@@ -1,0 +1,43 @@
+{
+  "scenario": "Scenario 5: Source of Wealth Evidence Not Reconciled (ON_HOLD at Phase 7)",
+  "customer": {
+    "case_ref": "UC3-TEST-CASE-05",
+    "customer_type_code": "INDIVIDUAL",
+    "full_name": "Ibrahim Khalid Dar",
+    "date_of_birth": "1975-09-18",
+    "role": "PRIMARY"
+  },
+  "flow_a": {
+    "trigger_reason": "REACTIVATION"
+  },
+  "flow_b": {
+    "review_decision": "CONFIRMED_MATCH",
+    "reviewer_name": "Analyst Ahmed",
+    "reviewer_notes": "Name and DOB matches Ibrahim Khalid Dar, CEO of PSO (State-owned corporation)",
+    "classification_type": "DIRECT_PEP",
+    "test_joint_beneficial_ownership": false,
+    "test_entity_set_up_for_pep_benefit": false,
+    "test_reasonably_known_close_connection": false,
+    "test_is_spouse": false,
+    "test_is_lineal_descendant_ascendant": false,
+    "test_is_sibling": false,
+    "role_verified": "CEO Pakistan State Oil",
+    "is_senior_enough": true
+  },
+  "flow_c": {
+    "evidence": {
+      "evidence_type": "SALARY_DISCLOSURE",
+      "file_ref": "/uploads/pso_ceo_salary.pdf",
+      "declared_source": "Salary and bonuses as CEO",
+      "reconciled": false,
+      "reconciliation_notes": "Awaiting official salary slip verification from corporate HR.",
+      "reviewer_name": "Analyst Ahmed"
+    },
+    "approval": {
+      "decision": "CONTINUE_RELATIONSHIP",
+      "approver_name": "Director Compliance",
+      "approver_role": "Chief Compliance Officer",
+      "comments": "Attempting approval before evidence is reconciled."
+    }
+  }
+}

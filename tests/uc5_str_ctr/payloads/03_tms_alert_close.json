@@ -1,0 +1,29 @@
+{
+  "scenario": "STR Scenario 3: TMS Alert case created, investigated, and closed by analyst",
+  "customer_id": 103,
+  "trigger": {
+    "path": "uc5-str-tms-alert",
+    "body": {
+      "source_reference": "TMS-ALERT-987",
+      "description": "Suspicious rapid movement of funds in round sums"
+    }
+  },
+  "analyst_investigate": {
+    "analyst_name": "Analyst Ahmed",
+    "analyst_role": "COMPLIANCE_ANALYST",
+    "action": "investigate",
+    "transaction_history_reviewed": [
+      { "id": 7, "amount": 1900000.00 }
+    ],
+    "background_purpose_findings": "Reviewed recent activity. Transactions match legitimate family business operations.",
+    "narrative_draft": "The alert was triggered due to regular business cycles rather than structuring.",
+    "narrative_edited_by_human": true
+  },
+  "analyst_decide": {
+    "analyst_name": "Analyst Ahmed",
+    "analyst_role": "COMPLIANCE_ANALYST",
+    "action": "decide",
+    "decision": "CLOSE_NOT_SUSPICIOUS",
+    "rationale": "Legitimate business transactions verified with invoices. Closing case."
+  }
+}
