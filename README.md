@@ -33,7 +33,8 @@ genos-poc-v2/
 │   ├── uc3_sanctions_screening.md    # (Placeholder)
 │   ├── uc4_regulatory_reporting.md   # (Placeholder)
 │   ├── uc5_str_ctr.md                # Guide for STR/CTR Pipeline & Suspicious Investigation
-│   └── uc8_wire_transfers.md         # Guide for Wire Transfer Data Completeness & Compliance
+│   ├── uc8_wire_transfers.md         # Guide for Wire Transfer Data Completeness & Compliance
+│   └── uc13_governance.md            # Guide for IRAR Auto-Generation & Board Governance
 │
 └── tests/                            # Automated test runners and JSON payloads
     ├── uc1_onboarding/
@@ -59,8 +60,11 @@ genos-poc-v2/
     │       ├── 01_cash_above_threshold.json
     │       ├── 03_tms_alert_close.json
     │       └── ...
-    └── uc8_wire_transfers/           # UC8 test runner and payloads
-        ├── test_uc8_wire_transfers.sh # Wire transfer completeness test runner script
+    ├── uc8_wire_transfers/           # UC8 test runner and payloads
+    │   ├── test_uc8_wire_transfers.sh # Wire transfer completeness test runner script
+    │   └── payloads/                 # SBP compliance edge-case payloads
+    └── uc13_governance/              # UC13 test runner and payloads
+        ├── test_uc13_governance.sh   # IRAR & Board governance test runner script
         └── payloads/                 # SBP compliance edge-case payloads
 ```
 
@@ -90,6 +94,10 @@ docker compose up -d
 - **Use Case 8 (Wire Transfer Data Completeness & Compliance):**
   - Refer to the setup guide: [uc8_wire_transfers.md](file:///mnt/c/Important/Git_Folder/genos-poc-v2/manual_build_guides/uc8_wire_transfers.md) (Backup: [n8n_manual_build_guide_uc8.md](file:///home/shazan/.gemini/antigravity-ide/brain/43dae19e-0d9e-4363-bd3d-166abbbe8dca/n8n_manual_build_guide_uc8.md))
   - Follow the manual guide step-by-step to construct both workflows on your n8n canvas at `http://localhost:5678`.
+
+- **Use Case 13 (IRAR Auto-Generation & Board Governance):**
+  - Refer to the setup guide: [uc13_governance.md](file:///mnt/c/Important/Git_Folder/genos-poc-v2/manual_build_guides/uc13_governance.md) (Backup: [n8n_manual_build_guide_uc13.md](file:///home/shazan/.gemini/antigravity-ide/brain/43dae19e-0d9e-4363-bd3d-166abbbe8dca/n8n_manual_build_guide_uc13.md))
+  - Follow the manual guide step-by-step to construct the 5 flows on your n8n canvas at `http://localhost:5678`.
 
 ### 3. Running Automated Tests
 
@@ -133,6 +141,13 @@ cd tests/uc8_wire_transfers/
 ./test_uc8_wire_transfers.sh payloads/04_beneficiary_escalate_str.json
 # Run interbank own-behalf settlement test (auto-exempted)
 ./test_uc8_wire_transfers.sh payloads/05_interbank_settlement_exempt.json
+```
+
+#### Use Case 13 IRAR & BoD Governance
+```bash
+cd tests/uc13_governance/
+# Run scheduled cycle end-to-end test (intake, metrics aggregator, narrative edit, gap, action validation, prereview, BoD vote, SOP text, archive)
+./test_uc13_governance.sh payloads/01_scheduled_complete_path.json
 ```
 
 ---

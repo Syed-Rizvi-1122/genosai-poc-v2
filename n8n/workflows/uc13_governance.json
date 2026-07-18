@@ -1,0 +1,1429 @@
+{
+  "name": "UC13 - IRAR & Board Governance",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "uc13-event-trigger",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "47c40122-d4ac-4690-ae98-19b1b777d6db",
+      "name": "Webhook: Event Cycle Trigger",
+      "webhookId": "55cd4c7b-5e5b-4792-948d-b495cfe47054"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "months",
+              "monthsInterval": 3,
+              "triggerAtHour": 1
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        0,
+        192
+      ],
+      "id": "7d166318-bea0-4fd2-9f62-7b9d41c3b555",
+      "name": "Schedule Trigger: Periodical Cadence"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO irar_cycles (cycle_ref, trigger_type, trigger_note, status)\nVALUES (\n  'IRAR-' || to_char(now(), 'YYYY-MM-DD') || '-' || substring(md5(random()::text) from 1 for 4),\n  COALESCE('{{ $json.body.trigger_type }}', 'SCHEDULED'),\n  COALESCE('{{ $json.body.trigger_note }}', 'Scheduled quarterly assessment execution.'),\n  'DATA_AGGREGATION'\n) RETURNING *;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        224,
+        96
+      ],
+      "id": "8b7608e5-2b1e-4c76-89e3-afbc748f5cfe",
+      "name": "Insert Cycle Record",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  (SELECT COUNT(*) FROM str_filings) as str_filed_count,\n  (SELECT COUNT(*) FROM ctr_filings) as ctr_filed_count;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        448,
+        96
+      ],
+      "id": "0f18cc6a-9a90-4da4-800e-57ba5cc261d2",
+      "name": "Aggregate UC5 Metrics",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO irar_internal_metrics_snapshot (cycle_id, metric_key, metric_value, source_table_ref)\nVALUES \n  ({{ $('Insert Cycle Record').first().json.id }}, 'STR_FILED_COUNT', {{ $json.str_filed_count }}, 'uc5.str_filings'),\n  ({{ $('Insert Cycle Record').first().json.id }}, 'CONTAINER_CTR_FILED_COUNT', {{ $json.ctr_filed_count }}, 'uc5.ctr_filings')\nRETURNING *;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        672,
+        96
+      ],
+      "id": "be3f1f84-0aa6-4711-9c5b-424de61b98cd",
+      "name": "Snap UC5 Metrics",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  (SELECT COUNT(*) FROM pep_designations WHERE is_active = true) as pep_designation_count,\n  (SELECT COUNT(*) FROM tfs_screening_results WHERE match_found = true) as tfs_match_count;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        896,
+        96
+      ],
+      "id": "d32f8afa-3ee3-4b2f-982a-3dcc7c480533",
+      "name": "Aggregate UC3 Metrics",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO irar_internal_metrics_snapshot (cycle_id, metric_key, metric_value, source_table_ref)\nVALUES \n  ({{ $('Insert Cycle Record').first().json.id }}, 'PEP_DESIGNATION_COUNT', {{ $json.pep_designation_count }}, 'uc3.pep_designations'),\n  ({{ $('Insert Cycle Record').first().json.id }}, 'TFS_MATCH_COUNT', {{ $json.tfs_match_count }}, 'uc3.tfs_screening_results')\nRETURNING *;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1120,
+        96
+      ],
+      "id": "75a0fe93-7c87-4d41-9427-be9ce055947b",
+      "name": "Snap UC3 Metrics",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "uc13-external-inputs",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        640
+      ],
+      "id": "8578d756-c167-417b-8016-cf1bea5f7c82",
+      "name": "Webhook: Enter External Inputs",
+      "webhookId": "f3367152-824a-4752-853a-ef1c4391ef64"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO irar_external_inputs (cycle_id, input_type, description, source_attribution, entered_by)\nVALUES (\n  {{ $json.body.cycle_id }},\n  '{{ $json.body.input_type }}',\n  '{{ $json.body.description }}',\n  '{{ $json.body.source_attribution }}',\n  '{{ $json.body.entered_by }}'\n) RETURNING *;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        224,
+        640
+      ],
+      "id": "212d17b9-d760-4b1d-b18c-3457db7a4f7d",
+      "name": "Insert External Inputs",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:5678/webhook/uc1-compliance-metrics",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1344,
+        96
+      ],
+      "id": "cae3ddba-4964-43b9-92bb-e4c0245d569e",
+      "name": "Fetch UC1 Metrics"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO irar_rejected_case_inputs (cycle_id, rejected_case_count, risk_rating_revision_count, ml_tf_pf_closure_count)\nVALUES (\n  {{ $('Insert Cycle Record').first().json.id }},\n  {{ $json.rejected_case_count }},\n  {{ $json.risk_rating_revision_count }},\n  {{ $json.ml_tf_pf_closure_count }}\n) RETURNING *;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1568,
+        96
+      ],
+      "id": "74720368-d69d-4cc2-b542-7650b2ae6cec",
+      "name": "Insert UC1 Metrics Snapshot",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "uc13-staff-risk",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        416
+      ],
+      "id": "be3ef6f7-9654-418d-b34c-03eccf6b2321",
+      "name": "Webhook: Enter Staff Risk Snapshot",
+      "webhookId": "f237f019-ee03-4067-a6d3-4c486fee76d1"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO irar_employee_risk_snapshot (cycle_id, training_completion_rate, fpt_noncompliance_count, screening_flags_count)\nVALUES (\n  {{ $json.body.cycle_id }},\n  {{ $json.body.training_completion_rate }},\n  {{ $json.body.fpt_noncompliance_count }},\n  {{ $json.body.screening_flags_count }}\n) RETURNING *;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        224,
+        416
+      ],
+      "id": "f61a8059-2860-4ed3-b998-b86a3535cdd2",
+      "name": "Insert Staff Snapshot",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE irar_cycles\nSET status = 'DRAFTING'\nWHERE id = {{ $('Insert Cycle Record').first().json.id }}\nRETURNING *;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1792,
+        96
+      ],
+      "id": "30c46611-d986-4da0-9d1d-3a6a522cbc1c",
+      "name": "Start Drafting Phase",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "uc13-draft-start",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        864
+      ],
+      "id": "25b36622-801f-44bd-9c2e-6d57b001b4d5",
+      "name": "Webhook: Start Drafting",
+      "webhookId": "261b8e00-5934-49e1-9c29-341771571e53"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  c.id,\n  c.cycle_ref,\n  COALESCE((SELECT json_agg(m) FROM irar_internal_metrics_snapshot m WHERE m.cycle_id = c.id), '[]'::json) as internal_metrics,\n  COALESCE((SELECT json_agg(e) FROM irar_external_inputs e WHERE e.cycle_id = c.id), '[]'::json) as external_inputs,\n  COALESCE((SELECT json_agg(r) FROM irar_rejected_case_inputs r WHERE r.cycle_id = c.id), '[]'::json) as rejected_metrics,\n  COALESCE((SELECT json_agg(s) FROM irar_employee_risk_snapshot s WHERE s.cycle_id = c.id), '[]'::json) as staff_metrics\nFROM irar_cycles c\nWHERE c.id = {{ $json.body.cycle_id }};",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        224,
+        864
+      ],
+      "id": "2a962fb5-779e-4457-8077-42d2c3e09723",
+      "name": "Get Aggregated Context",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{\n{\n  \"model\": \"llama-3.3-70b-versatile\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are a professional bank AML/CFT compliance analyst. You compile the entity-level Internal Risk Assessment Report (IRAR) for SBP compliance.\\n\\nGenerate draft narratives for the following 8 SBP dimensions:\\n1. CUSTOMERS\\n2. PRODUCTS\\n3. SERVICES\\n4. DELIVERY_CHANNELS\\n5. TECHNOLOGIES\\n6. EMPLOYEE_CATEGORIES\\n7. TRANSNATIONAL_TF\\n8. EMERGING_RISKS\\n\\nYou MUST return a JSON object with the exact keys: 'CUSTOMERS', 'PRODUCTS', 'SERVICES', 'DELIVERY_CHANNELS', 'TECHNOLOGIES', 'EMPLOYEE_CATEGORIES', 'TRANSNATIONAL_TF', 'EMERGING_RISKS'. The values must be the draft narrative paragraphs (2-3 sentences each) summarizing the risks based on the context.\\nReturn ONLY the JSON object. Do not include markdown code block formatting or conversational text.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": `Cycle Reference: ${$json.cycle_ref || ''}\nInternal Metrics: ${JSON.stringify($json.internal_metrics || [])}\nExternal SBP Inputs: ${JSON.stringify($json.external_inputs || [])}\nRejected Cases (UC1): ${JSON.stringify($json.rejected_metrics || [])}\nHR Employee Snapshot: ${JSON.stringify($json.staff_metrics || [])}`\n    }\n  ],\n  \"response_format\": { \"type\": \"json_object\" }\n}\n}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        448,
+        864
+      ],
+      "id": "5c192eda-2b30-408a-b654-f794580ca88b",
+      "name": "LLM Narrative Draft (Groq Completion)",
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "lhQPBTRHGuLcDZqY",
+          "name": "Grok API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO irar_risk_narrative (cycle_id, risk_dimension, llm_draft_text)\nVALUES \n  ({{ $('Get Aggregated Context').first().json.id }}, 'CUSTOMERS', '{{ JSON.parse($json.choices[0].message.content).CUSTOMERS.replace(/'/g, \"''\") }}'),\n  ({{ $('Get Aggregated Context').first().json.id }}, 'PRODUCTS', '{{ JSON.parse($json.choices[0].message.content).PRODUCTS.replace(/'/g, \"''\") }}'),\n  ({{ $('Get Aggregated Context').first().json.id }}, 'SERVICES', '{{ JSON.parse($json.choices[0].message.content).SERVICES.replace(/'/g, \"''\") }}'),\n  ({{ $('Get Aggregated Context').first().json.id }}, 'DELIVERY_CHANNELS', '{{ JSON.parse($json.choices[0].message.content).DELIVERY_CHANNELS.replace(/'/g, \"''\") }}'),\n  ({{ $('Get Aggregated Context').first().json.id }}, 'TECHNOLOGIES', '{{ JSON.parse($json.choices[0].message.content).TECHNOLOGIES.replace(/'/g, \"''\") }}'),\n  ({{ $('Get Aggregated Context').first().json.id }}, 'EMPLOYEE_CATEGORIES', '{{ JSON.parse($json.choices[0].message.content).EMPLOYEE_CATEGORIES.replace(/'/g, \"''\") }}'),\n  ({{ $('Get Aggregated Context').first().json.id }}, 'TRANSNATIONAL_TF', '{{ JSON.parse($json.choices[0].message.content).TRANSNATIONAL_TF.replace(/'/g, \"''\") }}'),\n  ({{ $('Get Aggregated Context').first().json.id }}, 'EMERGING_RISKS', '{{ JSON.parse($json.choices[0].message.content).EMERGING_RISKS.replace(/'/g, \"''\") }}')\nRETURNING *;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        672,
+        864
+      ],
+      "id": "a4567779-4479-4deb-820d-ba3a0c50217d",
+      "name": "Insert LLM Draft Narrative",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "uc13-analyst-edit",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        1088
+      ],
+      "id": "68c0f8da-a1c7-4e9b-8f1d-f6887275055d",
+      "name": "Webhook: Analyst Narrative Edit",
+      "webhookId": "9f9d1183-370d-49d4-88f7-e67185a48104"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE irar_risk_narrative\nSET human_edited_text = '{{ $json.body.edited_text }}',\n    edited_by = '{{ $json.body.edited_by }}',\n    edited_at = now()\nWHERE cycle_id = {{ $json.body.cycle_id }} AND risk_dimension = '{{ $json.body.risk_dimension }}'\nRETURNING *;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        224,
+        1088
+      ],
+      "id": "254de0d9-abf4-4160-adc3-01388b549f6e",
+      "name": "Update Narrative Text",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "uc13-gap-analysis",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        1312
+      ],
+      "id": "6747eb4e-1031-42aa-a7fa-c8f71cc6aac2",
+      "name": "Webhook: Enter Gap Analysis",
+      "webhookId": "9a8f2b48-357d-4638-a7d5-ac9ed076e1f1"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO irar_gap_analysis (cycle_id, identified_risk, existing_control, gap_description, proportionality_note, severity)\nVALUES (\n  {{ $json.body.cycle_id }},\n  '{{ $json.body.identified_risk }}',\n  '{{ $json.body.existing_control }}',\n  '{{ $json.body.gap_description }}',\n  '{{ $json.body.proportionality_note }}',\n  '{{ $json.body.severity }}'\n) RETURNING *;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        224,
+        1312
+      ],
+      "id": "94513cad-8ee2-448b-8141-f82ea8282cbb",
+      "name": "Insert Gap Record",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "uc13-action-item",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        1632
+      ],
+      "id": "f6f1c158-072a-4163-b810-7215aca3416c",
+      "name": "Webhook: Enter Action Recommendations",
+      "webhookId": "f1ac7e95-dff2-4a0c-b874-21502c44fde3"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO irar_action_plan_items (cycle_id, category, recommendation, target_completion_date, owner)\nVALUES (\n  {{ $json.body.cycle_id }},\n  '{{ $json.body.category }}',\n  '{{ $json.body.recommendation }}',\n  '{{ $json.body.target_completion_date }}',\n  '{{ $json.body.owner }}'\n) RETURNING *;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        224,
+        1632
+      ],
+      "id": "2fd5b1ba-85ef-474f-9c24-5e8fd5783e3b",
+      "name": "Insert Action Plan Item",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  COUNT(CASE WHEN category = 'BUSINESS_STRATEGY_RISK_APPETITE' THEN 1 END) as strat_count,\n  COUNT(CASE WHEN category = 'POLICY_FRAMEWORK' THEN 1 END) as policy_count,\n  COUNT(CASE WHEN category = 'SOP_PROCEDURE_MANUAL' THEN 1 END) as sop_count,\n  COUNT(CASE WHEN category = 'EMPLOYEE_RISK_UNDERSTANDING' THEN 1 END) as train_count,\n  COUNT(CASE WHEN category = 'RESOURCE_ADEQUACY' THEN 1 END) as res_count\nFROM irar_action_plan_items\nWHERE cycle_id = {{ $json.cycle_id }};",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        448,
+        1632
+      ],
+      "id": "e12bf09e-c55f-4caa-b872-66dfd388c1a8",
+      "name": "Check Action Plan Categories",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "547949a5-9f80-42ff-bfe1-887ce714e618",
+              "leftValue": "={{ $json.strat_count }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            },
+            {
+              "id": "084102dd-9d43-4a3f-9c82-e0a65520ce60",
+              "leftValue": "={{ $json.policy_count }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            },
+            {
+              "id": "ae0df8ac-55f5-4877-855d-66768046e8d8",
+              "leftValue": "={{ $json.sop_count }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            },
+            {
+              "id": "881ac9f2-2450-472e-8ce4-74b2d5ab88a0",
+              "leftValue": "={{ $json.train_count }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            },
+            {
+              "id": "0e52e9b5-ade6-477c-9939-554a6919c439",
+              "leftValue": "={{ $json.res_count }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        672,
+        1632
+      ],
+      "id": "51631c51-8fd2-47bb-a468-ab7b16bcf66a",
+      "name": "IF: Enforce SBP Categories?"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "uc13-pre-review",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        1952
+      ],
+      "id": "3b040237-79da-45e6-82ad-2447f22686f6",
+      "name": "Webhook: Request Pre-Review",
+      "webhookId": "dabebf9d-2916-4a0b-8af6-266f942173ae"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE irar_cycles\nSET status = 'SENIOR_MGMT_PREREVIEW'\nWHERE id = {{ $json.body.cycle_id }}\nRETURNING *;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        224,
+        1952
+      ],
+      "id": "66ad1be6-3af6-4d51-91f0-da44707e3029",
+      "name": "Set Status Pre-Review",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "shazanali3210@gmail.com",
+        "toEmail": "shazanali3210@gmail.com",
+        "subject": "=ALERT: Compliance Pre-Review Requested for Cycle {{ $json.cycle_ref }}",
+        "html": "=<html>\n<head>\n  <style>\n    body { font-family: 'Helvetica Neue', Arial, sans-serif; color: #333; background: #f4f6f9; margin: 0; padding: 40px; }\n    .card { background: #fff; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); max-width: 600px; margin: 0 auto; overflow: hidden; border: 1px solid #e1e4e8; }\n    .header { background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); color: #fff; padding: 30px; text-align: center; }\n    .header h1 { margin: 0; font-size: 20px; font-weight: 600; color: #ffffff; }\n    .header p { margin: 5px 0 0; opacity: 0.8; font-size: 13px; color: #ffffff; }\n    .content { padding: 30px; }\n    .badge { display: inline-block; padding: 6px 12px; font-size: 12px; font-weight: 700; border-radius: 20px; text-transform: uppercase; margin-bottom: 20px; background: #dbeafe; color: #1e40af; }\n    .section-title { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #718096; border-bottom: 1px solid #edf2f7; padding-bottom: 8px; margin-top: 25px; margin-bottom: 15px; }\n    table { width: 100%; border-collapse: collapse; }\n    td { padding: 8px 0; font-size: 14px; }\n    td:first-child { color: #718096; width: 40%; }\n    td:last-child { font-weight: 600; }\n    .btn-container { text-align: center; margin-top: 25px; }\n    .btn { display: inline-block; padding: 12px 24px; font-size: 14px; font-weight: 600; color: #fff; background-color: #3b82f6; text-decoration: none; border-radius: 6px; box-shadow: 0 2px 4px rgba(59,130,246,0.3); }\n    .footer { background: #f8f9fa; padding: 20px 30px; text-align: center; font-size: 12px; color: #718096; }\n  </style>\n</head>\n<body>\n  <div class=\"card\">\n    <div class=\"header\">\n      <h1>🏛️ IRAR Pre-Review Requested</h1>\n      <p>UC13 — Internal Risk Assessment Report & Governance</p>\n    </div>\n    <div class=\"content\">\n      <span class=\"badge\">STATUS: SENIOR MANAGEMENT PRE-REVIEW</span>\n      <div class=\"section-title\">Assessment Cycle Context</div>\n      <table>\n        <tr><td>Cycle Reference</td><td>{{ $json.cycle_ref }}</td></tr>\n        <tr><td>Trigger Type</td><td>{{ $json.trigger_type }}</td></tr>\n        <tr><td>Creation Date</td><td>{{ $json.created_at }}</td></tr>\n        <tr><td>Active Status</td><td style=\"color: #1e40af;\">{{ $json.status }}</td></tr>\n      </table>\n      \n      <div class=\"section-title\">Compliance Mandate</div>\n      <p style=\"font-size:14px; line-height: 1.5; margin: 0 0 15px 0;\">\n        Under State Bank of Pakistan AML/CFT/CPF regulations, the Board-level Internal Risk Assessment Report (IRAR) requires a documented senior management pre-review before escalation to the Board of Directors.\n      </p>\n      \n      <div class=\"section-title\">Required Action</div>\n      <p style=\"font-size:14px; line-height: 1.5; margin: 0 0 25px 0;\">\n        Please review the compiled draft narratives, gaps analysis, and 5-pillar SBP action plan, then log your official decision (Approve for BoD / Return for Revision).\n      </p>\n      \n      <div class=\"btn-container\">\n        <a href=\"http://localhost:5678/webhook/uc13-prereview-decision\" class=\"btn\" style=\"color: #ffffff;\">Log Pre-Review Decision</a>\n      </div>\n    </div>\n    <div class=\"footer\">\n      Genos Bank Compliance Automation • SBP Board Governance Framework\n    </div>\n  </div>\n</body>\n</html>",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        448,
+        1952
+      ],
+      "id": "004efb86-1060-44df-8585-8fdc91d89fe8",
+      "name": "Send Email: Pre-Review Alert",
+      "webhookId": "56f79e5a-57d0-4c49-8846-b0446f832e60",
+      "credentials": {
+        "smtp": {
+          "id": "8Rb60oaV0VVNTtzH",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "uc13-prereview-decision",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        2272
+      ],
+      "id": "8ce83827-37af-4ba2-a9d8-325eda80d763",
+      "name": "Webhook: Submit Pre-Review Decision",
+      "webhookId": "ca345729-f21c-48c6-adb1-fc6469bd0eac"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO irar_senior_mgmt_prereview (cycle_id, reviewer_name, decision, comments)\nVALUES (\n  {{ $json.body.cycle_id }},\n  '{{ $json.body.reviewer_name }}',\n  '{{ $json.body.decision }}',\n  '{{ $json.body.comments }}'\n) RETURNING *;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        224,
+        2272
+      ],
+      "id": "b81d3d67-bcf9-4a27-8122-9079dc78e071",
+      "name": "Insert Pre-Review Log",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "90b82c10-32a3-4a52-86ed-79157c571268",
+              "leftValue": "={{ $json.decision }}",
+              "rightValue": "APPROVED_FOR_BOD",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        448,
+        2272
+      ],
+      "id": "6679a88f-a996-45c5-bb9f-955225b36866",
+      "name": "IF: Pre-Review Approved?"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "uc13-bod-decision",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        2688
+      ],
+      "id": "b387eb11-1775-4238-85eb-00903918da5b",
+      "name": "Webhook: Submit BoD Approval",
+      "webhookId": "6e655517-2d58-4fe9-8ded-028cc008b30e"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO irar_bod_approval (cycle_id, decision, approved_by, meeting_ref)\nVALUES (\n  {{ $json.body.cycle_id }},\n  '{{ $json.body.decision }}',\n  '{{ $json.body.approved_by }}',\n  '{{ $json.body.meeting_ref }}'\n) RETURNING *;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        224,
+        2688
+      ],
+      "id": "87214248-47dd-425d-83b1-fc0c2a73485b",
+      "name": "Insert BoD Log",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "0d2de452-00d9-4f66-bc25-13a452c82de0",
+              "leftValue": "={{ $json.decision }}",
+              "rightValue": "APPROVED",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        448,
+        2688
+      ],
+      "id": "3f5e8d61-ec22-4c46-8197-258ef6febde3",
+      "name": "IF: BoD Approved?"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "uc13-sop-decision",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        3008
+      ],
+      "id": "35e44e43-ce10-4595-960c-3ed26040491f",
+      "name": "Webhook: SOP Text Approval",
+      "webhookId": "bc6a7892-6fa0-48f4-b7cb-d0c50155af8f"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO irar_sop_approval (action_plan_item_id, approved_by, decision, updated_sop_reference)\nVALUES (\n  {{ $json.body.action_plan_item_id }},\n  '{{ $json.body.approved_by }}',\n  '{{ $json.body.decision }}',\n  '{{ $json.body.updated_sop_reference }}'\n) RETURNING *;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        224,
+        3008
+      ],
+      "id": "ce226692-9dc9-420b-b5ae-ebef717c0a80",
+      "name": "Insert SOP Approval Log",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"status\": \"success\", \"message\": \"Validation passed: SBP Action Plan covers all 5 mandatory categories.\"}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        896,
+        1536
+      ],
+      "id": "60686317-f37c-40af-b3d4-7346096d3507",
+      "name": "Respond: Validation Passed"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"status\": \"error\", \"message\": \"Validation failed: SBP Action Plan must cover all 5 mandatory categories.\"}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        896,
+        1728
+      ],
+      "id": "ba7d0aa4-775b-4e1a-87cc-3085577428f7",
+      "name": "Respond: Validation Failed"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE irar_cycles\nSET status = 'BOD_APPROVAL'\nWHERE id = {{ $('Insert Pre-Review Log').first().json.cycle_id }}\nRETURNING *;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        672,
+        2176
+      ],
+      "id": "cb9ced2f-40de-44a6-b0de-0824fd05f1e4",
+      "name": "Set Status BoD Approval",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE irar_cycles\nSET status = 'DRAFTING'\nWHERE id = {{ $('Insert Pre-Review Log').first().json.cycle_id }}\nRETURNING *;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        672,
+        2368
+      ],
+      "id": "820715a8-e2ae-478d-a4e1-dc9ce85e8d9f",
+      "name": "Set Status Revision Required (Pre-Review)",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE irar_cycles\nSET status = 'SOP_APPROVAL'\nWHERE id = {{ $('Insert BoD Log').first().json.cycle_id }}\nRETURNING *;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        672,
+        2592
+      ],
+      "id": "2b79320b-aa34-43e9-b3ac-9a4cb1cb035d",
+      "name": "Set Status SOP Approval",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE irar_cycles\nSET status = 'DRAFTING'\nWHERE id = {{ $('Insert BoD Log').first().json.cycle_id }}\nRETURNING *;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        672,
+        2784
+      ],
+      "id": "e2e7fbf2-a6f4-47e3-9509-c48918a3eb05",
+      "name": "Set Status Revision Required (BoD)",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE irar_cycles\nSET status = 'ARCHIVED',\n    closed_at = now()\nWHERE id = (\n  SELECT cycle_id \n  FROM irar_action_plan_items \n  WHERE id = {{ $json.action_plan_item_id }}\n)\nRETURNING *;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        448,
+        3008
+      ],
+      "id": "9592ad33-7d3b-40fd-8baa-96118812f6d9",
+      "name": "Archive Cycle",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO irar_archive (cycle_id, final_document_ref, bod_deck_ref, retention_until, available_for_sbp_inspection)\nVALUES (\n  {{ $json.id }},\n  'http://localhost:9000/archives/' || '{{ $json.cycle_ref }}' || '-FINAL.pdf',\n  'http://localhost:9000/archives/' || '{{ $json.cycle_ref }}' || '-DECK.pdf',\n  now()::date + interval '10 years',\n  true\n) RETURNING *;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        672,
+        3008
+      ],
+      "id": "79db0632-61b4-4d5c-a8aa-41aec8a0741c",
+      "name": "Save Archive Log",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "path": "uc1-compliance-metrics",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        3232
+      ],
+      "id": "fa211d9f-bf5c-4995-9958-28acedc90ab7",
+      "name": "Webhook: UC1 Compliance Metrics",
+      "webhookId": "d2ca9761-9571-4622-8633-3b4e9d437d03"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n  (SELECT COUNT(*) FROM cdd_cases WHERE status = 'REJECTED') as rejected_case_count,\n  (SELECT COUNT(*) FROM approvals WHERE decision = 'RETURNED_FOR_INFO') as risk_rating_revision_count,\n  (SELECT COUNT(*) FROM accounts WHERE status = 'CLOSED') as ml_tf_pf_closure_count;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        224,
+        3232
+      ],
+      "id": "f65951d5-ee8b-40d0-9eac-7496ba5af968",
+      "name": "Query Metrics",
+      "credentials": {
+        "postgres": {
+          "id": "jAJgSFNohrcTMvPV",
+          "name": "AML Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify($json) }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        448,
+        3232
+      ],
+      "id": "ad804e4b-8ca4-4f73-9664-7820b189350d",
+      "name": "Respond to Webhook: Return Metrics"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook: Event Cycle Trigger": {
+      "main": [
+        [
+          {
+            "node": "Insert Cycle Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger: Periodical Cadence": {
+      "main": [
+        [
+          {
+            "node": "Insert Cycle Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Cycle Record": {
+      "main": [
+        [
+          {
+            "node": "Aggregate UC5 Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate UC5 Metrics": {
+      "main": [
+        [
+          {
+            "node": "Snap UC5 Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Snap UC5 Metrics": {
+      "main": [
+        [
+          {
+            "node": "Aggregate UC3 Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate UC3 Metrics": {
+      "main": [
+        [
+          {
+            "node": "Snap UC3 Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook: Enter External Inputs": {
+      "main": [
+        [
+          {
+            "node": "Insert External Inputs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Snap UC3 Metrics": {
+      "main": [
+        [
+          {
+            "node": "Fetch UC1 Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch UC1 Metrics": {
+      "main": [
+        [
+          {
+            "node": "Insert UC1 Metrics Snapshot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook: Enter Staff Risk Snapshot": {
+      "main": [
+        [
+          {
+            "node": "Insert Staff Snapshot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert UC1 Metrics Snapshot": {
+      "main": [
+        [
+          {
+            "node": "Start Drafting Phase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook: Start Drafting": {
+      "main": [
+        [
+          {
+            "node": "Get Aggregated Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Aggregated Context": {
+      "main": [
+        [
+          {
+            "node": "LLM Narrative Draft (Groq Completion)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "LLM Narrative Draft (Groq Completion)": {
+      "main": [
+        [
+          {
+            "node": "Insert LLM Draft Narrative",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook: Analyst Narrative Edit": {
+      "main": [
+        [
+          {
+            "node": "Update Narrative Text",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook: Enter Gap Analysis": {
+      "main": [
+        [
+          {
+            "node": "Insert Gap Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook: Enter Action Recommendations": {
+      "main": [
+        [
+          {
+            "node": "Insert Action Plan Item",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Action Plan Item": {
+      "main": [
+        [
+          {
+            "node": "Check Action Plan Categories",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Action Plan Categories": {
+      "main": [
+        [
+          {
+            "node": "IF: Enforce SBP Categories?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook: Request Pre-Review": {
+      "main": [
+        [
+          {
+            "node": "Set Status Pre-Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Status Pre-Review": {
+      "main": [
+        [
+          {
+            "node": "Send Email: Pre-Review Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook: Submit Pre-Review Decision": {
+      "main": [
+        [
+          {
+            "node": "Insert Pre-Review Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Pre-Review Log": {
+      "main": [
+        [
+          {
+            "node": "IF: Pre-Review Approved?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook: Submit BoD Approval": {
+      "main": [
+        [
+          {
+            "node": "Insert BoD Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert BoD Log": {
+      "main": [
+        [
+          {
+            "node": "IF: BoD Approved?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook: SOP Text Approval": {
+      "main": [
+        [
+          {
+            "node": "Insert SOP Approval Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Enforce SBP Categories?": {
+      "main": [
+        [
+          {
+            "node": "Respond: Validation Passed",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond: Validation Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Pre-Review Approved?": {
+      "main": [
+        [
+          {
+            "node": "Set Status BoD Approval",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set Status Revision Required (Pre-Review)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: BoD Approved?": {
+      "main": [
+        [
+          {
+            "node": "Set Status SOP Approval",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Set Status Revision Required (BoD)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert SOP Approval Log": {
+      "main": [
+        [
+          {
+            "node": "Archive Cycle",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Archive Cycle": {
+      "main": [
+        [
+          {
+            "node": "Save Archive Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook: UC1 Compliance Metrics": {
+      "main": [
+        [
+          {
+            "node": "Query Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Metrics": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook: Return Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "db450bb5-2516-4563-a856-ce937cfd4baa",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "eeda824893ce98822b0b4043b43e928e49b7621bae4482aa410a3b9883ce47cf"
+  },
+  "nodeGroups": [],
+  "id": "djh2RXTgPiUclaMc",
+  "tags": []
+}

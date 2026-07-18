@@ -1,0 +1,76 @@
+{
+  "trigger": {
+    "trigger_type": "SCHEDULED",
+    "trigger_note": "Quarterly scheduled IRAR cycle run."
+  },
+  "external_input": {
+    "input_type": "NRA_UPDATE",
+    "description": "NRA 2025 highlights increased money laundering risks via offshore shell companies.",
+    "source_attribution": "Pakistan National Risk Assessment 2025 Section 5",
+    "entered_by": "compliance_analyst_01"
+  },
+  "staff_risk": {
+    "training_completion_rate": 98.20,
+    "fpt_noncompliance_count": 0,
+    "screening_flags_count": 0
+  },
+  "narrative": {
+    "risk_dimension": "CUSTOMERS",
+    "edited_text": "Retail customer segments verified. Corporate customers vetted for ultimate beneficial ownership.",
+    "edited_by": "compliance_analyst_01"
+  },
+  "gap_analysis": {
+    "identified_risk": "Information gaps regarding beneficial owners of complex legal entities.",
+    "existing_control": "Self-declaration forms collected at onboarding.",
+    "gap_description": "Lack of independent registry verification for foreign holding structures.",
+    "proportionality_note": "Genos Bank is a medium retail provider, so registry validation is targeted to high-risk PEP-linked holdings.",
+    "severity": "MEDIUM"
+  },
+  "action_items": [
+    {
+      "category": "BUSINESS_STRATEGY_RISK_APPETITE",
+      "recommendation": "Maintain conservative risk limits for high-risk offshore legal structures.",
+      "target_completion_date": "2026-12-31",
+      "owner": "Board Risk Committee"
+    },
+    {
+      "category": "POLICY_FRAMEWORK",
+      "recommendation": "Update board-approved CDD policy to mandate verification of foreign registers.",
+      "target_completion_date": "2026-09-30",
+      "owner": "Chief Compliance Officer"
+    },
+    {
+      "category": "SOP_PROCEDURE_MANUAL",
+      "recommendation": "Publish updated beneficial ownership verification guidelines for analysts.",
+      "target_completion_date": "2026-06-30",
+      "owner": "Head of Onboarding Operations"
+    },
+    {
+      "category": "EMPLOYEE_RISK_UNDERSTANDING",
+      "recommendation": "Train corporate onboarding staff on complex shareholding structures.",
+      "target_completion_date": "2026-08-31",
+      "owner": "HR Training Lead"
+    },
+    {
+      "category": "RESOURCE_ADEQUACY",
+      "recommendation": "Acquire premium corporate database subscriptions to verify foreign entities.",
+      "target_completion_date": "2026-07-31",
+      "owner": "Head of IT Procurement"
+    }
+  ],
+  "pre_review": {
+    "reviewer_name": "Farhan Ahmed (Senior Compliance Manager)",
+    "decision": "APPROVED_FOR_BOD",
+    "comments": "Draft is thorough and SBP-compliant. Sourced metrics are correctly logged."
+  },
+  "bod_approval": {
+    "approved_by": "Tariq Malik (Board Secretary)",
+    "decision": "APPROVED",
+    "meeting_ref": "BoD-Meeting-Q3-2026"
+  },
+  "sop_approval": {
+    "approved_by": "Farhan Ahmed",
+    "decision": "APPROVED",
+    "updated_sop_reference": "SOP-BO-VERIFY-V3.4"
+  }
+}

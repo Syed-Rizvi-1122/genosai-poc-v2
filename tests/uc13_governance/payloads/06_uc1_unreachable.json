@@ -1,0 +1,6 @@
+{
+  "trigger": {
+    "trigger_type": "SCHEDULED",
+    "trigger_note": "Quarterly scheduled IRAR cycle run when UC1 metrics are unreachable."
+  }
+}

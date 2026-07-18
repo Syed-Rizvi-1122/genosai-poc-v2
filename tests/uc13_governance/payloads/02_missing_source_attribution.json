@@ -1,0 +1,12 @@
+{
+  "trigger": {
+    "trigger_type": "EVENT_NRA_UPDATE",
+    "trigger_note": "NRA triggered risk assessment update."
+  },
+  "external_input": {
+    "input_type": "NRA_UPDATE",
+    "description": "NRA 2025 highlights increased money laundering risks via offshore shell companies.",
+    "source_attribution": "",
+    "entered_by": "compliance_analyst_01"
+  }
+}
